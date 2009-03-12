@@ -27,12 +27,6 @@
 #include "utils/guc.h"
 #include "utils/hsearch.h"
 
-/* Current session timezone (controlled by TimeZone GUC) */
-pg_tz	   *session_timezone = NULL;
-
-/* Current log timezone (controlled by log_timezone GUC) */
-pg_tz	   *log_timezone = NULL;
-
 /* Fallback GMT timezone for last-ditch error message formatting */
 pg_tz	   *gmt_timezone = NULL;
 static pg_tz gmt_timezone_data;
@@ -139,6 +133,7 @@ pg_open_tzfile(const char *name, char *canonname)
  * (of length fnamelen --- fname may not be null terminated!).	If found,
  * copy the actual filename into canonname and return true.
  */
+
 static bool
 scan_directory_ci(const char *dirname, const char *fname, int fnamelen,
 				  char *canonname, int canonnamelen)
@@ -147,7 +142,7 @@ scan_directory_ci(const char *dirname, const char *fname, int fnamelen,
 	DIR		   *dirdesc;
 	struct dirent *direntry;
 
-	dirdesc = AllocateDir(dirname);
+	dirdesc = opendir(dirname);
 	if (!dirdesc)
 	{
 		ereport(LOG,
@@ -156,7 +151,7 @@ scan_directory_ci(const char *dirname, const char *fname, int fnamelen,
 		return false;
 	}
 
-	while ((direntry = ReadDir(dirdesc, dirname)) != NULL)
+	while ((direntry = readdir(dirdesc)) != NULL)
 	{
 		/*
 		 * Ignore . and .., plus any other "hidden" files.	This is a security
@@ -166,7 +161,7 @@ scan_directory_ci(const char *dirname, const char *fname, int fnamelen,
 			continue;
 
 		if (strlen(direntry->d_name) == fnamelen &&
-			pg_strncasecmp(direntry->d_name, fname, fnamelen) == 0)
+			strncasecmp(direntry->d_name, fname, fnamelen) == 0)
 		{
 			/* Found our match */
 			strncpy(canonname, direntry->d_name, canonnamelen);
@@ -176,7 +171,7 @@ scan_directory_ci(const char *dirname, const char *fname, int fnamelen,
 		}
 	}
 
-	FreeDir(dirdesc);
+	closedir(dirdesc);
 
 	return found;
 }
@@ -572,7 +567,7 @@ scan_available_timezones(char *tzdir, char *tzdirsub, struct tztry * tt,
 	DIR		   *dirdesc;
 	struct dirent *direntry;
 
-	dirdesc = AllocateDir(tzdir);
+	dirdesc = opendir(tzdir);
 	if (!dirdesc)
 	{
 		ereport(LOG,
@@ -581,7 +576,7 @@ scan_available_timezones(char *tzdir, char *tzdirsub, struct tztry * tt,
 		return;
 	}
 
-	while ((direntry = ReadDir(dirdesc, tzdir)) != NULL)
+	while ((direntry = readdir(dirdesc)) != NULL)
 	{
 		struct stat statbuf;
 
@@ -634,7 +629,7 @@ scan_available_timezones(char *tzdir, char *tzdirsub, struct tztry * tt,
 		tzdir[tzdir_orig_len] = '\0';
 	}
 
-	FreeDir(dirdesc);
+	closedir(dirdesc);
 }
 #else							/* WIN32 */
 
@@ -1159,36 +1154,34 @@ identify_system_timezone(void)
  * Because we want timezone names to be found case-insensitively,
  * the hash key is the uppercased name of the zone.
  */
-typedef struct
+typedef struct pg_tz_cache_struct
 {
 	/* tznameupper contains the all-upper-case name of the timezone */
 	char		tznameupper[TZ_STRLEN_MAX + 1];
 	pg_tz		tz;
+        struct pg_tz_cache_struct     *next;
+
 } pg_tz_cache;
 
-static HTAB *timezone_cache = NULL;
+pg_tz_cache *start = 0;
 
-
-static bool
-init_timezone_hashtable(void)
-{
-	HASHCTL		hash_ctl;
-
-	MemSet(&hash_ctl, 0, sizeof(hash_ctl));
-
-	hash_ctl.keysize = TZ_STRLEN_MAX + 1;
-	hash_ctl.entrysize = sizeof(pg_tz_cache);
-
-	timezone_cache = hash_create("Timezones",
-								 4,
-								 &hash_ctl,
-								 HASH_ELEM);
-	if (!timezone_cache)
-		return false;
-
-	return true;
+pg_tz_cache* find_in_cache(const char *name) {
+    pg_tz_cache *it = start;
+    while(it) {
+        if (strcmp(it->tznameupper, name) == 0)
+            return start;
+        else
+            it = start->next;
+    }
+    return 0;
 }
 
+pg_tz_cache* add_to_cache() {
+    pg_tz_cache *new_element = malloc(sizeof(struct pg_tz_cache_struct));
+    new_element->next = start;
+    start = new_element;
+    return new_element;
+}
 /*
  * Load a timezone from file or from cache.
  * Does not verify that the timezone is acceptable!
@@ -1205,9 +1198,6 @@ pg_tzset(const char *name)
 	if (strlen(name) > TZ_STRLEN_MAX)
 		return NULL;			/* not going to fit */
 
-	if (!timezone_cache)
-		if (!init_timezone_hashtable())
-			return NULL;
 
 	/*
 	 * Upcase the given name to perform a case-insensitive hashtable search.
@@ -1217,13 +1207,11 @@ pg_tzset(const char *name)
 	 */
 	p = uppername;
 	while (*name)
-		*p++ = pg_toupper((unsigned char) *name++);
+		*p++ = toupper((unsigned char) *name++);
 	*p = '\0';
 
-	tzp = (pg_tz_cache *) hash_search(timezone_cache,
-									  uppername,
-									  HASH_FIND,
-									  NULL);
+	tzp = find_in_cache(uppername);
+
 	if (tzp)
 	{
 		/* Timezone found in cache, nothing more to do */
@@ -1242,10 +1230,7 @@ pg_tzset(const char *name)
 	}
 
 	/* Save timezone in the cache */
-	tzp = (pg_tz_cache *) hash_search(timezone_cache,
-									  uppername,
-									  HASH_ENTER,
-									  NULL);
+	tzp = add_to_cache();
 
 	/* hash_search already copied uppername into the hash key */
 	strcpy(tzp->tz.TZname, canonname);
@@ -1363,43 +1348,6 @@ pg_timezone_pre_initialize(void)
 }
 
 /*
- * Initialize timezone library
- *
- * This is called after initial loading of postgresql.conf.  If no TimeZone
- * setting was found therein, we try to derive one from the environment.
- * Likewise for log_timezone.
- */
-void
-pg_timezone_initialize(void)
-{
-	pg_tz	   *def_tz = NULL;
-
-	/* Do we need to try to figure the session timezone? */
-	if (pg_strcasecmp(GetConfigOption("timezone"), "UNKNOWN") == 0)
-	{
-		/* Select setting */
-		def_tz = select_default_timezone();
-		session_timezone = def_tz;
-		/* Tell GUC about the value. Will redundantly call pg_tzset() */
-		SetConfigOption("timezone", pg_get_timezone_name(def_tz),
-						PGC_POSTMASTER, PGC_S_ARGV);
-	}
-
-	/* What about the log timezone? */
-	if (pg_strcasecmp(GetConfigOption("log_timezone"), "UNKNOWN") == 0)
-	{
-		/* Select setting, but don't duplicate work */
-		if (!def_tz)
-			def_tz = select_default_timezone();
-		log_timezone = def_tz;
-		/* Tell GUC about the value. Will redundantly call pg_tzset() */
-		SetConfigOption("log_timezone", pg_get_timezone_name(def_tz),
-						PGC_POSTMASTER, PGC_S_ARGV);
-	}
-}
-
-
-/*
  * Functions to enumerate available timezones
  *
  * Note that pg_tzenumerate_next() will return a pointer into the pg_tzenum
@@ -1419,7 +1367,7 @@ struct pg_tzenum
 };
 
 /* typedef pg_tzenum is declared in pgtime.h */
-
+/*
 pg_tzenum *
 pg_tzenumerate_start(void)
 {
@@ -1436,7 +1384,8 @@ pg_tzenumerate_start(void)
 				 errmsg("could not open directory \"%s\": %m", startdir)));
 	return ret;
 }
-
+*/
+/*
 void
 pg_tzenumerate_end(pg_tzenum *dir)
 {
@@ -1448,7 +1397,8 @@ pg_tzenumerate_end(pg_tzenum *dir)
 	}
 	pfree(dir);
 }
-
+*/
+/*
 pg_tz *
 pg_tzenumerate_next(pg_tzenum *dir)
 {
@@ -1463,7 +1413,7 @@ pg_tzenumerate_next(pg_tzenum *dir)
 		if (!direntry)
 		{
 			/* End of this directory */
-			FreeDir(dir->dirdesc[dir->depth]);
+/*			FreeDir(dir->dirdesc[dir->depth]);
 			pfree(dir->dirname[dir->depth]);
 			dir->depth--;
 			continue;
@@ -1482,7 +1432,7 @@ pg_tzenumerate_next(pg_tzenum *dir)
 		if (S_ISDIR(statbuf.st_mode))
 		{
 			/* Step into the subdirectory */
-			if (dir->depth >= MAX_TZDIR_DEPTH - 1)
+/*			if (dir->depth >= MAX_TZDIR_DEPTH - 1)
 				ereport(ERROR,
 						(errmsg("timezone directory stack overflow")));
 			dir->depth++;
@@ -1495,30 +1445,31 @@ pg_tzenumerate_next(pg_tzenum *dir)
 								fullname)));
 
 			/* Start over reading in the new directory */
-			continue;
+/*			continue;
 		}
 
 		/*
 		 * Load this timezone using tzload() not pg_tzset(), so we don't fill
 		 * the cache
 		 */
-		if (tzload(fullname + dir->baselen, dir->tz.TZname, &dir->tz.state, 
+/*		if (tzload(fullname + dir->baselen, dir->tz.TZname, &dir->tz.state,
 				   TRUE) != 0)
 		{
 			/* Zone could not be loaded, ignore it */
-			continue;
+/*			continue;
 		}
 
 		if (!tz_acceptable(&dir->tz))
 		{
 			/* Ignore leap-second zones */
-			continue;
+/*			continue;
 		}
 
 		/* Timezone loaded OK. */
-		return &dir->tz;
+/*		return &dir->tz;
 	}
 
 	/* Nothing more found */
-	return NULL;
+/*	return NULL;
 }
+*/
