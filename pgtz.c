@@ -56,12 +56,16 @@ pg_TZDIR(void)
 	/* normal case: timezone stuff is under our share dir */
 	static bool done_tzdir = false;
 	static char tzdir[MAXPGPATH];
+        int tzdirlen = 0;
 
 	if (done_tzdir)
 		return tzdir;
 
 	get_share_path(my_exec_path, tzdir);
-	strlcpy(tzdir + strlen(tzdir), "/timezone", MAXPGPATH - strlen(tzdir));
+
+        tzdirlen = strlen(tzdir);
+	strncpy(tzdir + tzdirlen, "/timezone", MAXPGPATH - tzdirlen);
+        tzdir[MAXPGPATH-1] = '\0';
 
 	done_tzdir = true;
 	return tzdir;
@@ -121,8 +125,10 @@ pg_open_tzfile(const char *name, char *canonname)
 			break;
 	}
 
-	if (canonname)
-		strlcpy(canonname, fullname + orignamelen + 1, TZ_STRLEN_MAX + 1);
+	if (canonname) {
+		strncpy(canonname, fullname + orignamelen + 1, TZ_STRLEN_MAX + 1);
+                canonname[TZ_STRLEN_MAX] = '\0';
+        }
 
 	return open(fullname, O_RDONLY | PG_BINARY, 0);
 }
@@ -163,7 +169,8 @@ scan_directory_ci(const char *dirname, const char *fname, int fnamelen,
 			pg_strncasecmp(direntry->d_name, fname, fnamelen) == 0)
 		{
 			/* Found our match */
-			strlcpy(canonname, direntry->d_name, canonnamelen);
+			strncpy(canonname, direntry->d_name, canonnamelen);
+                        canonname[canonnamelen-1] = '\0';
 			found = true;
 			break;
 		}
@@ -608,15 +615,18 @@ scan_available_timezones(char *tzdir, char *tzdirsub, struct tztry * tt,
 			if (score > *bestscore)
 			{
 				*bestscore = score;
-				strlcpy(bestzonename, tzdirsub, TZ_STRLEN_MAX + 1);
+				strncpy(bestzonename, tzdirsub, TZ_STRLEN_MAX + 1);
+                                bestzonename[TZ_STRLEN_MAX] = '\0';
 			}
 			else if (score == *bestscore)
 			{
 				/* Consider how to break a tie */
 				if (strlen(tzdirsub) < strlen(bestzonename) ||
 					(strlen(tzdirsub) == strlen(bestzonename) &&
-					 strcmp(tzdirsub, bestzonename) < 0))
-					strlcpy(bestzonename, tzdirsub, TZ_STRLEN_MAX + 1);
+					 strcmp(tzdirsub, bestzonename) < 0)) {
+					strncpy(bestzonename, tzdirsub, TZ_STRLEN_MAX + 1);
+                                        bestzonename[TZ_STRLEN_MAX] = '\0';
+                                }
 			}
 		}
 
