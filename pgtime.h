@@ -40,8 +40,10 @@ struct pg_tm
 typedef struct pg_tz pg_tz;
 typedef struct pg_tzenum pg_tzenum;
 
-extern struct pg_tm *pg_localtime(const pg_time_t *timep, const pg_tz *tz);
-extern struct pg_tm *pg_gmtime(const pg_time_t *timep);
+extern struct pg_tm *pg_localtime_r(const pg_time_t *timep, 
+                                    const pg_tz *tz, 
+                                    struct pg_tm *tm);
+extern struct pg_tm *pg_gmtime_r(const pg_time_t *timep, struct pg_tm *tm);
 extern int pg_next_dst_boundary(const pg_time_t *timep,
 					 long int *before_gmtoff,
 					 int *before_isdst,
@@ -52,8 +54,6 @@ extern int pg_next_dst_boundary(const pg_time_t *timep,
 extern size_t pg_strftime(char *s, size_t max, const char *format,
 			const struct pg_tm * tm);
 
-extern void pg_timezone_pre_initialize(void);
-extern void pg_timezone_initialize(void);
 extern pg_tz *pg_tzset(const char *tzname);
 extern bool tz_acceptable(pg_tz *tz);
 extern bool pg_get_timezone_offset(const pg_tz *tz, long int *gmtoff);

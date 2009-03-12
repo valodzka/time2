@@ -27,11 +27,6 @@
 #include "utils/guc.h"
 #include "utils/hsearch.h"
 
-/* Fallback GMT timezone for last-ditch error message formatting */
-pg_tz	   *gmt_timezone = NULL;
-static pg_tz gmt_timezone_data;
-
-
 static bool scan_directory_ci(const char *dirname,
 				  const char *fname, int fnamelen,
 				  char *canonname, int canonnamelen);
@@ -280,7 +275,7 @@ score_timezone(const char *tzname, struct tztry * tt)
 	int			i;
 	pg_time_t	pgtt;
 	struct tm  *systm;
-	struct pg_tm *pgtm;
+	struct pg_tm *pgtm, tm;
 	char		cbuf[TZ_STRLEN_MAX + 1];
 	pg_tz		tz;
 
@@ -308,7 +303,7 @@ score_timezone(const char *tzname, struct tztry * tt)
 	for (i = 0; i < tt->n_test_times; i++)
 	{
 		pgtt = (pg_time_t) (tt->test_times[i]);
-		pgtm = pg_localtime(&pgtt, &tz);
+		pgtm = pg_localtime_r(&pgtt, &tz, &tm);
 		if (!pgtm)
 			return -1;			/* probably shouldn't happen */
 		systm = localtime(&(tt->test_times[i]));
@@ -1253,7 +1248,7 @@ pg_tzset(const char *name)
 bool
 tz_acceptable(pg_tz *tz)
 {
-	struct pg_tm *tt;
+	struct pg_tm *tt, tm;
 	pg_time_t	time2000;
 
 	/*
@@ -1262,7 +1257,7 @@ tz_acceptable(pg_tz *tz)
 	 * other result has to be due to leap seconds.
 	 */
 	time2000 = (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY;
-	tt = pg_localtime(&time2000, tz);
+	tt = pg_localtime_r(&time2000, tz, &tm);
 	if (!tt || tt->tm_sec != 0)
 		return false;
 
@@ -1325,29 +1320,6 @@ select_default_timezone(void)
 
 
 /*
- * Pre-initialize timezone library
- *
- * This is called before GUC variable initialization begins.  Its purpose
- * is to ensure that elog.c has a pgtz variable available to format timestamps
- * with, in case log_line_prefix is set to a value requiring that.	We cannot
- * set log_timezone yet.
- */
-void
-pg_timezone_pre_initialize(void)
-{
-	/*
-	 * We can't use tzload() because we may not know where PGSHAREDIR is (in
-	 * particular this is true in an EXEC_BACKEND subprocess). Since this
-	 * timezone variable will only be used for emergency fallback purposes, it
-	 * seems OK to just use the "lastditch" case provided by tzparse().
-	 */
-	if (tzparse("GMT", &gmt_timezone_data.state, TRUE) != 0)
-		elog(FATAL, "could not initialize GMT timezone");
-	strcpy(gmt_timezone_data.TZname, "GMT");
-	gmt_timezone = &gmt_timezone_data;
-}
-
-/*
  * Functions to enumerate available timezones
  *
  * Note that pg_tzenumerate_next() will return a pointer into the pg_tzenum
@@ -1367,38 +1339,38 @@ struct pg_tzenum
 };
 
 /* typedef pg_tzenum is declared in pgtime.h */
-/*
 pg_tzenum *
 pg_tzenumerate_start(void)
 {
-	pg_tzenum  *ret = (pg_tzenum *) palloc0(sizeof(pg_tzenum));
-	char	   *startdir = pstrdup(pg_TZDIR());
+	pg_tzenum  *ret = (pg_tzenum *) malloc(sizeof(pg_tzenum));
+	char	   *startdir = strdup(pg_TZDIR());
+        
+        memset(ret, 0, sizeof(pg_tzenum));
 
 	ret->baselen = strlen(startdir) + 1;
 	ret->depth = 0;
 	ret->dirname[0] = startdir;
-	ret->dirdesc[0] = AllocateDir(startdir);
+	ret->dirdesc[0] = opendir(startdir);
 	if (!ret->dirdesc[0])
 		ereport(ERROR,
 				(errcode_for_file_access(),
 				 errmsg("could not open directory \"%s\": %m", startdir)));
 	return ret;
 }
-*/
-/*
+
 void
 pg_tzenumerate_end(pg_tzenum *dir)
 {
 	while (dir->depth >= 0)
 	{
-		FreeDir(dir->dirdesc[dir->depth]);
-		pfree(dir->dirname[dir->depth]);
+		closedir(dir->dirdesc[dir->depth]);
+		free(dir->dirname[dir->depth]);
 		dir->depth--;
 	}
-	pfree(dir);
+	free(dir);
 }
-*/
-/*
+
+
 pg_tz *
 pg_tzenumerate_next(pg_tzenum *dir)
 {
@@ -1408,13 +1380,13 @@ pg_tzenumerate_next(pg_tzenum *dir)
 		char		fullname[MAXPGPATH];
 		struct stat statbuf;
 
-		direntry = ReadDir(dir->dirdesc[dir->depth], dir->dirname[dir->depth]);
+		direntry = readdir(dir->dirdesc[dir->depth]);
 
 		if (!direntry)
 		{
 			/* End of this directory */
-/*			FreeDir(dir->dirdesc[dir->depth]);
-			pfree(dir->dirname[dir->depth]);
+			closedir(dir->dirdesc[dir->depth]);
+			free(dir->dirname[dir->depth]);
 			dir->depth--;
 			continue;
 		}
@@ -1432,12 +1404,12 @@ pg_tzenumerate_next(pg_tzenum *dir)
 		if (S_ISDIR(statbuf.st_mode))
 		{
 			/* Step into the subdirectory */
-/*			if (dir->depth >= MAX_TZDIR_DEPTH - 1)
+			if (dir->depth >= MAX_TZDIR_DEPTH - 1)
 				ereport(ERROR,
 						(errmsg("timezone directory stack overflow")));
 			dir->depth++;
-			dir->dirname[dir->depth] = pstrdup(fullname);
-			dir->dirdesc[dir->depth] = AllocateDir(fullname);
+			dir->dirname[dir->depth] = strdup(fullname);
+			dir->dirdesc[dir->depth] = opendir(fullname);
 			if (!dir->dirdesc[dir->depth])
 				ereport(ERROR,
 						(errcode_for_file_access(),
@@ -1445,31 +1417,30 @@ pg_tzenumerate_next(pg_tzenum *dir)
 								fullname)));
 
 			/* Start over reading in the new directory */
-/*			continue;
+			continue;
 		}
 
 		/*
 		 * Load this timezone using tzload() not pg_tzset(), so we don't fill
 		 * the cache
 		 */
-/*		if (tzload(fullname + dir->baselen, dir->tz.TZname, &dir->tz.state,
+		if (tzload(fullname + dir->baselen, dir->tz.TZname, &dir->tz.state,
 				   TRUE) != 0)
 		{
 			/* Zone could not be loaded, ignore it */
-/*			continue;
+			continue;
 		}
 
 		if (!tz_acceptable(&dir->tz))
 		{
 			/* Ignore leap-second zones */
-/*			continue;
+			continue;
 		}
 
 		/* Timezone loaded OK. */
-/*		return &dir->tz;
+		return &dir->tz;
 	}
 
 	/* Nothing more found */
-/*	return NULL;
+	return NULL;
 }
-*/

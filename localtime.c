@@ -112,7 +112,7 @@ static int	gmt_is_set = 0;
  * Thanks to Paul Eggert for noting this.
  */
 
-static struct pg_tm tm;
+//static struct pg_tm tm;
 
 
 static long
@@ -1071,9 +1071,9 @@ localsub(const pg_time_t *timep, long offset,
 
 
 struct pg_tm *
-pg_localtime(const pg_time_t *timep, const pg_tz *tz)
+pg_localtime_r(const pg_time_t *timep, const pg_tz *tz, struct pg_tm* tm)
 {
-	return localsub(timep, 0L, &tm, tz);
+	return localsub(timep, 0L, tm, tz);
 }
 
 
@@ -1106,9 +1106,9 @@ gmtsub(const pg_time_t *timep, long offset, struct pg_tm *tmp)
 }
 
 struct pg_tm *
-pg_gmtime(const pg_time_t *timep)
+pg_gmtime_r(const pg_time_t *timep, struct pg_tm *tm)
 {
-	return gmtsub(timep, 0L, &tm);
+	return gmtsub(timep, 0L, tm);
 }
 
 /*
