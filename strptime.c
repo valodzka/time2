@@ -521,16 +521,23 @@ label:
 			if (cp - buf) {
 				strncpy(zonestr, buf, TZ_STRLEN_MAX);
 				zonestr[TZ_STRLEN_MAX] = '\0';
-				// TODO: not use ! tzname !!!
+				// TODO: normail implementation
 				if (0 == strcmp(zonestr, "GMT")) {
 				    *GMTp = 1;
+				}
+				else {
+					struct pg_tz *tz = pg_tzset(zonestr);
+					
+					if (tz) 
+						tm->tm_zone = tz->TZname;
+					else 
+						return 0;
+				}
+				
 				//} else if (0 == strcmp(zonestr, tzname[0])) {
 				    //tm->tm_isdst = 0;
 				//} else if (0 == strcmp(zonestr, tzname[1])) {
 				  //  tm->tm_isdst = 1;
-				} else {
-				    return 0;
-				}				
 				buf += cp - buf;
 			}
 			}
