@@ -19,9 +19,63 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#include "miscadmin.h"
+#undef HAVE_SYS_TIME_H
+#undef HAVE_INTTYPES_H
+#include "ruby.h"
+//#include "ruby/win32.h"
+
+#ifndef RUBY_WIN32_DIR_H
+#define RUBY_WIN32_DIR_H
+
+#ifdef __BORLANDC__
+#  ifndef WIN32_DIR_H_
+#    define WIN32_DIR_H_
+#    include <sys/types.h>
+#  endif
+#endif
+
+struct direct
+{
+  long d_namlen;
+  ino_t d_ino;
+  char *d_name;
+  char d_isdir; /* directory */
+  char d_isrep; /* reparse point */
+};
+typedef struct {
+  char *start;
+  char *curr;
+  long size;
+  long nfiles;
+  long loc;  /* [0, nfiles) */
+  struct direct dirstr;
+  char *bits;  /* used for d_isdir and d_isrep */
+} DIR;
+
+
+DIR*           rb_w32_opendir(const char*);
+struct direct* rb_w32_readdir(DIR *);
+off_t          rb_w32_telldir(DIR *);
+void           rb_w32_seekdir(DIR *, off_t);
+void           rb_w32_rewinddir(DIR *);
+void           rb_w32_closedir(DIR *);
+
+#define opendir   rb_w32_opendir
+#define readdir   rb_w32_readdir
+#define telldir   rb_w32_telldir
+#define seekdir   rb_w32_seekdir
+#define rewinddir rb_w32_rewinddir
+#define closedir  rb_w32_closedir
+
+# define dirent direct
+
+#ifndef S_ISDIR
+#   define S_ISDIR(m) ((m & S_IFMT) == S_IFDIR)
+#endif
+
+#endif /* RUBY_WIN32_DIR_H */ 
+
 #include "pgtz.h"
-#include "storage/fd.h"
 #include "tzfile.h"
 #include "utils/datetime.h"
 #include "utils/guc.h"
@@ -160,7 +214,7 @@ scan_directory_ci(const char *dirname, const char *fname, int fnamelen,
 		{
 			/* Found our match */
 			strncpy(canonname, direntry->d_name, canonnamelen);
-                        canonname[canonnamelen-1] = '\0';
+            canonname[canonnamelen-1] = '\0';
 			found = true;
 			break;
 		}
@@ -627,6 +681,8 @@ scan_available_timezones(char *tzdir, char *tzdirsub, struct tztry * tt,
 	closedir(dirdesc);
 }
 #else							/* WIN32 */
+
+#include <windows.h>
 
 static const struct
 {

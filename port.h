@@ -14,8 +14,6 @@
 #define PG_PORT_H
 
 #include <ctype.h>
-#include <netdb.h>
-#include <pwd.h>
 
 /* non-blocking */
 extern bool pg_set_noblock(int sock);
@@ -79,10 +77,6 @@ extern int	find_my_exec(const char *argv0, char *retpath);
 extern int find_other_exec(const char *argv0, const char *target,
 				const char *versionstr, char *retpath);
 
-/* Windows security token manipulation (in exec.c) */
-#ifdef WIN32
-extern BOOL AddUserToDacl(HANDLE hProcess);
-#endif
 
 
 #if defined(WIN32) || defined(__CYGWIN__)
@@ -304,13 +298,8 @@ extern int	pgwin32_safestat(const char *path, struct stat *buf);
  * passing of other special options.
  */
 #define		O_DIRECT	0x80000000
-extern int	pgwin32_open(const char *, int,...);
 extern FILE *pgwin32_fopen(const char *, const char *);
 
-#ifndef FRONTEND
-#define		open(a,b,c) pgwin32_open(a,b,c)
-#define		fopen(a,b) pgwin32_fopen(a,b)
-#endif
 
 #define popen(a,b) _popen(a,b)
 #define pclose(a) _pclose(a)
@@ -400,10 +389,7 @@ extern void srandom(unsigned int seed);
 /* thread.h */
 extern char *pqStrerror(int errnum, char *strerrbuf, size_t buflen);
 
-#if !defined(WIN32) || defined(__CYGWIN__)
-extern int pqGetpwuid(uid_t uid, struct passwd * resultbuf, char *buffer,
-		   size_t buflen, struct passwd ** result);
-#endif
+
 
 extern int pqGethostbyname(const char *name,
 				struct hostent * resultbuf,

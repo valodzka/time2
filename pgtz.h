@@ -85,7 +85,12 @@ extern int	tzparse(const char *name, struct state * sp, int lastditch);
 //elog(DEBUG4, "Reject TZ \"%s\": uses leap seconds", tzname);
 #undef elog
 #define elog
+#define DEBUG4 (0)
 
-#define SYSTEMTZDIR "/usr/share/zoneinfo/"
+#ifdef WIN32
+#  define SYSTEMTZDIR "C:\\Program Files\\PostgreSQL\\8.3\\share\\timezone\\"
+#else
+#  define SYSTEMTZDIR "/usr/share/zoneinfo/"
+#endif
 
 #endif   /* _PGTZ_H */

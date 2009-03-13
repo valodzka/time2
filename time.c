@@ -993,10 +993,12 @@ time_s_mktime(int argc, VALUE *argv, VALUE klass)
 static VALUE
 time_to_i(VALUE time)
 {
-    struct time_object *tobj;
+	//TODO:uncomment
+    //struct time_object *tobj;
 
-    GetTimeval(time, tobj);
-    return TIMET2NUM(tobj->ts.tv_sec);
+    //GetTimeval(time, tobj);
+    //return TIMET2NUM(tobj->ts.tv_sec);
+	return LONG2FIX(0L);
 }
 
 /*
@@ -1183,18 +1185,20 @@ time_utc_p(VALUE time)
 static VALUE
 time_hash(VALUE time)
 {
-    struct time_object *tobj;
-    long hash;
+	//TODO:uncomment
+    //struct time_object *tobj;
+    //long hash;
 
-    GetTimeval(time, tobj);
+    //GetTimeval(time, tobj);
 #if SIZEOF_TIME_T > SIZEOF_INT
-    hash = rb_hash_start((unsigned int)(tobj->ts.tv_sec >> (SIZEOF_INT * CHAR_BIT)));
-    hash = rb_hash_uint(hash, (unsigned int)tobj->ts.tv_sec);
+    //hash = rb_hash_start((unsigned int)(tobj->ts.tv_sec >> (SIZEOF_INT * CHAR_BIT)));
+    //hash = rb_hash_uint(hash, (unsigned int)tobj->ts.tv_sec);
 #else
-    hash = rb_hash_start((unsigned int)tobj->ts.tv_sec);
+    //hash = rb_hash_start((unsigned int)tobj->ts.tv_sec);
 #endif
-    hash = rb_hash_end(rb_hash_uint(hash, tobj->ts.tv_nsec));
-    return LONG2FIX(hash);
+    //hash = rb_hash_end(rb_hash_uint(hash, tobj->ts.tv_nsec));
+    //return LONG2FIX(hash);
+	return LONG2FIX(0L);
 }
 
 /* :nodoc: */

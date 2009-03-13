@@ -431,9 +431,6 @@
 /* Define to 1 if cpp supports the ANSI # stringizing operator. */
 #define HAVE_STRINGIZE 1
 
-/* Define to 1 if you have the <strings.h> header file. */
-#define HAVE_STRINGS_H 1
-
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
 
