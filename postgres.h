@@ -45,8 +45,6 @@
 #define POSTGRES_H
 
 #include "c.h"
-#include "utils/elog.h"
-#include "utils/palloc.h"
 
 /* ----------------------------------------------------------------
  *				Section 1:	variable-length datatypes (TOAST support)

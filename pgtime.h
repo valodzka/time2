@@ -20,7 +20,7 @@
  * 64 bits wide, and which is most definitely signed not unsigned.
  */
 
-typedef int64 pg_time_t;
+typedef time_t pg_time_t;
 
 struct pg_tm
 {

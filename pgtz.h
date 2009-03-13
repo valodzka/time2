@@ -93,4 +93,19 @@ extern int	tzparse(const char *name, struct state * sp, int lastditch);
 #  define SYSTEMTZDIR "/usr/share/zoneinfo/"
 #endif
 
+/* Julian-date equivalents of Day 0 in Unix and Postgres reckoning */
+#define UNIX_EPOCH_JDATE		2440588 /* == date2j(1970, 1, 1) */
+#define POSTGRES_EPOCH_JDATE	2451545 /* == date2j(2000, 1, 1) */
+
+/*
+*	This doesn't adjust for uneven daylight savings time intervals or leap
+*	seconds, and it crudely estimates leap years.  A more accurate value
+*	for days per years is 365.2422.
+*/
+#define SECS_PER_YEAR	(36525 * 864)	/* avoid floating-point computation */
+#define SECS_PER_DAY	86400
+#define SECS_PER_HOUR	3600
+#define SECS_PER_MINUTE 60
+#define MINS_PER_HOUR	60
+
 #endif   /* _PGTZ_H */

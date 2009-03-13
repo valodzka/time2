@@ -77,9 +77,6 @@ void           rb_w32_closedir(DIR *);
 
 #include "pgtz.h"
 #include "tzfile.h"
-#include "utils/datetime.h"
-#include "utils/guc.h"
-#include "utils/hsearch.h"
 
 static bool scan_directory_ci(const char *dirname,
 				  const char *fname, int fnamelen,

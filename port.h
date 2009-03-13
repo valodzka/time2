@@ -285,11 +285,6 @@ extern bool rmtree(const char *path, bool rmtopdir);
  * Some frontends don't need the size from stat, so if UNSAFE_STAT_OK
  * is defined we don't bother with this.
  */
-#if defined(WIN32) && !defined(__CYGWIN__) && !defined(UNSAFE_STAT_OK)
-#include <sys/stat.h>
-extern int	pgwin32_safestat(const char *path, struct stat *buf);
-#define stat(a,b) pgwin32_safestat(a,b)
-#endif
 
 #if defined(WIN32) && !defined(__CYGWIN__)
 
