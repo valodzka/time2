@@ -52,10 +52,6 @@
 
 #include "pg_config.h"
 #include "pg_config_manual.h"	/* must be after pg_config.h */
-#if !defined(WIN32) && !defined(__CYGWIN__)		/* win32 will include further
-												 * down */
-#include "pg_config_os.h"		/* must be before any system header files */
-#endif
 #include "postgres_ext.h"
 
 #if _MSC_VER >= 1400

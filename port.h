@@ -381,28 +381,5 @@ extern void unsetenv(const char *name);
 extern void srandom(unsigned int seed);
 #endif
 
-/* thread.h */
-extern char *pqStrerror(int errnum, char *strerrbuf, size_t buflen);
-
-
-
-extern int pqGethostbyname(const char *name,
-				struct hostent * resultbuf,
-				char *buffer, size_t buflen,
-				struct hostent ** result,
-				int *herrno);
-
-extern void pg_qsort(void *base, size_t nel, size_t elsize,
-		 int (*cmp) (const void *, const void *));
-
-#define qsort(a,b,c,d) pg_qsort(a,b,c,d)
-
-typedef int (*qsort_arg_comparator) (const void *a, const void *b, void *arg);
-
-extern void qsort_arg(void *base, size_t nel, size_t elsize,
-		  qsort_arg_comparator cmp, void *arg);
-
-/* port/chklocale.c */
-extern int	pg_get_encoding_from_locale(const char *ctype);
 
 #endif   /* PG_PORT_H */

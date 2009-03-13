@@ -23,7 +23,7 @@ int main(int argc, char** argv)
         printf("Minsk - %d (%s), Japan - %d (%s)\nMinsk - %d (%s), Japan - %d (%s)\n", 
 			tm1.tm_hour, tm1.tm_zone, tm2.tm_hour, tm2.tm_zone,
 			tm11.tm_hour, tm11.tm_zone, tm22.tm_hour, tm22.tm_zone);
-		printf("%d <- %d, %d <- %d\n", pg_mktime(&tm1, tz1), (int)t, pg_mktime(&tm2, tz2), (int)s);
+	printf("%ld <- %ld, %ld <- %ld\n", pg_mktime(&tm1, tz1), t, pg_mktime(&tm2, tz2), t);
 
         puts(pg_asctime_r(&tm1,buff));
         puts(pg_asctime_r(&tm2,buff));

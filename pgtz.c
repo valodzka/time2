@@ -19,13 +19,8 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#undef HAVE_SYS_TIME_H
-#undef HAVE_INTTYPES_H
-#include "ruby.h"
-//#include "ruby/win32.h"
 
-#ifndef RUBY_WIN32_DIR_H
-#define RUBY_WIN32_DIR_H
+#ifdef WIN32
 
 #ifdef __BORLANDC__
 #  ifndef WIN32_DIR_H_
@@ -73,7 +68,12 @@ void           rb_w32_closedir(DIR *);
 #   define S_ISDIR(m) ((m & S_IFMT) == S_IFDIR)
 #endif
 
-#endif /* RUBY_WIN32_DIR_H */ 
+#else
+
+#include <sys/types.h>
+#include <dirent.h>
+
+#endif
 
 #include "pgtz.h"
 #include "tzfile.h"

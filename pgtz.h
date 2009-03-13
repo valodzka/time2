@@ -70,12 +70,13 @@ extern int	tzload(const char *name, char *canonname, struct state * sp,
 				   int doextend);
 extern int	tzparse(const char *name, struct state * sp, int lastditch);
 
-//#define ereport_domain(elevel, domain, rest)	\
-//	(errstart(elevel, __FILE__, __LINE__, PG_FUNCNAME_MACRO, domain) ? \
-//	 (errfinish rest) : (void) 0)
-//
-//#define ereport(level, rest)	\
-//	ereport_domain(level, TEXTDOMAIN, rest)
+/*
+#define ereport_domain(elevel, domain, rest)	\
+	(errstart(elevel, __FILE__, __LINE__, PG_FUNCNAME_MACRO, domain) ? \
+	 (errfinish rest) : (void) 0)
+
+#define ereport(level, rest)	\
+	ereport_domain(level, TEXTDOMAIN, rest) */
 #undef ereport
 #define ereport(level, rest) (0)
 

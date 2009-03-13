@@ -624,21 +624,6 @@
 /* Define bytes to use libc memset(). */
 #define MEMSET_LOOP_LIMIT 1024
 
-/* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "pgsql-bugs@postgresql.org"
-
-/* Define to the full name of this package. */
-#define PACKAGE_NAME "PostgreSQL"
-
-/* Define to the full name and version of this package. */
-#define PACKAGE_STRING "PostgreSQL 8.4devel"
-
-/* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "postgresql"
-
-/* Define to the version of this package. */
-#define PACKAGE_VERSION "8.4devel"
-
 /* Define to the name of the default PostgreSQL service principal in Kerberos.
    (--with-krb-srvnam=NAME) */
 #define PG_KRB_SRVNAM "postgres"

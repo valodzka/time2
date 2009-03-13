@@ -9,19 +9,22 @@
 
 
  **********************************************************************/
-
 #include "c.h"
+#include <time.h>
+#include "pgtime.h"
 #include "private.h"
 #include "pgtz.h"
 #include "tzfile.h"
 
-#undef HAVE_INTTYPES_H
-#undef HAVE_SYS_TIME_H
-#undef HAVE_UNISTD_H
+//#undef HAVE_INTTYPES_H
+//#undef HAVE_SYS_TIME_H
+//#undef HAVE_UNISTD_H
 
 #include "ruby/ruby.h"
+#include "pgtime.h"
 #include <sys/types.h>
 #include <errno.h>
+
 #include "ruby/encoding.h"
 
 #ifdef HAVE_UNISTD_H
@@ -35,6 +38,7 @@
 #endif
 
 VALUE rb_cTime;
+VALUE rb_cTimeZone;
 struct pg_tz * default_timezone = 0;
 
 static VALUE time_utc_offset _((VALUE));
@@ -401,7 +405,7 @@ time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec)
     int i;
     long year;
 
-    MEMZERO(tm, struct tm, 1);
+    MEMZERO(tm, struct pg_tm, 1);
     *nsec = 0;
     if (argc == 10) {
 	v[0] = argv[5];
@@ -2056,7 +2060,7 @@ time_to_a(VALUE time)
 #define SMALLBUF 100
 static int
 rb_strftime_alloc(char **buf, const char *format,
-		  struct tm *time, struct timespec *ts, int gmt)
+		  struct pg_tm *time, struct timespec *ts, int gmt)
 {
     int size, len, flen;
 
@@ -2380,6 +2384,76 @@ time_load(VALUE klass, VALUE str)
     return time;
 }
 
+#define GetTZval(obj, tobj) \
+    Data_Get_Struct(obj, struct pg_tz, tobj)
+
+
+static VALUE
+timezone_get(VALUE klass, VALUE name) 
+{    
+    VALUE tz_cache = rb_iv_get(klass, "@tz_cache"), upper_name_str;
+    struct pg_tz* tz;
+    char *upper_name = StringValueCStr(name), *pname = upper_name;    
+
+    //TODO:make it normal
+    while(*pname) {
+        *pname = TOUPPER(*pname);
+        ++pname;
+    }
+
+    upper_name_str = rb_str_new_cstr(upper_name);
+    
+    if (NIL_P(tz_cache)) {
+        tz_cache = rb_hash_new();
+        rb_iv_set(klass, "@tz_cache", tz_cache);
+    }
+    else {
+        VALUE cached_tz = rb_hash_aref(tz_cache, upper_name_str);
+        if (cached_tz != Qnil)
+            return cached_tz;
+    }
+    
+    tz = pg_tzset(upper_name);
+
+    if (tz) {
+        VALUE obj;
+
+        obj = Data_Wrap_Struct(klass, 0, 0, tz);
+        rb_hash_aset(tz_cache, upper_name_str, obj);
+        
+        return obj;
+     }
+     else {
+        rb_raise(rb_eRuntimeError, "time zone not found");
+     }
+}
+
+static VALUE
+timezone_name(VALUE timezone) 
+{
+    struct pg_tz* tz;
+    const char *tz_name;
+    
+    GetTZval(timezone, tz);
+    tz_name = pg_get_timezone_name(tz);
+    
+    return tz_name ? rb_str_new_cstr(tz_name) : Qnil;
+}
+
+static VALUE 
+timezone_offset(VALUE timezone) 
+{
+    struct pg_tz* tz;
+    long int offset;
+    
+    GetTZval(timezone, tz);
+    pg_get_timezone_offset(tz, &offset);
+
+    printf("%ld", offset);
+
+    return LONG2FIX(offset);
+}
+
 /*
  *  <code>Time</code> is an abstraction of dates and times. Time is
  *  stored internally as the number of seconds and nanoseconds since
@@ -2399,7 +2473,7 @@ time_load(VALUE klass, VALUE str)
  */
 
 void
-Init_Time(void)
+Init_time2(void)
 {
 #undef rb_intern
 #define rb_intern(str) rb_intern_const(str)
@@ -2484,7 +2558,14 @@ Init_Time(void)
     rb_define_method(rb_cTime, "_dump", time_dump, -1);
     rb_define_singleton_method(rb_cTime, "_load", time_load, 1);
 
-	default_timezone = select_default_timezone();
+    rb_cTimeZone = rb_define_class_under(rb_cTime, "Zone", rb_cObject);
+    
+    rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
+    
+    rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
+    rb_define_method(rb_cTimeZone, "offset", timezone_offset, 0);
+    
+    default_timezone = select_default_timezone();
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
     rb_define_method(rb_cTime, "marshal_dump", time_mdump, 0);
