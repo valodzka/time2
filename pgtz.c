@@ -86,7 +86,7 @@ static bool scan_directory_ci(const char *dirname,
 				  char *canonname, int canonnamelen);
 static const char *identify_system_timezone(void);
 static pg_tz *get_pg_tz_for_zone(const char *tzname);
-static pg_tz *select_default_timezone(void);
+
 
 
 /*
@@ -1220,9 +1220,9 @@ pg_tz_cache* find_in_cache(const char *name) {
     pg_tz_cache *it = start;
     while(it) {
         if (strcmp(it->tznameupper, name) == 0)
-            return start;
+            return it;
         else
-            it = start->next;
+            it = it->next;
     }
     return 0;
 }
@@ -1351,7 +1351,7 @@ get_pg_tz_for_zone(const char *tzname)
  * from the behavior of the system timezone library.  When all else fails,
  * fall back to GMT.
  */
-static pg_tz *
+pg_tz *
 select_default_timezone(void)
 {
 	pg_tz	   *def_tz;

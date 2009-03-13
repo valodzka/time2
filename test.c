@@ -23,13 +23,16 @@ int main(int argc, char** argv)
         puts(pg_asctime_r(&tm2,buff));
     }
     {
-        pg_tzenum *tzenum = pg_tzenumerate_start();
+     /*   pg_tzenum *tzenum = pg_tzenumerate_start();
         pg_tz* tz = 0;
         while(tz = pg_tzenumerate_next(tzenum)) {
             puts(tz->TZname);
         }
-        pg_tzenumerate_end(tzenum);
+        pg_tzenumerate_end(tzenum);*/
     }
+	{
+		puts(select_default_timezone()->TZname);
+	}
     
     return (EXIT_SUCCESS);
 }
