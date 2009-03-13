@@ -71,8 +71,6 @@ static char	elsieid[] = "@(#)asctime.c	8.2";
 */
 #define MAX_ASCTIME_BUF_SIZE	(2*3+5*INT_STRLEN_MAXIMUM(int)+7+2+1+1)
 
-static char	buf_asctime[MAX_ASCTIME_BUF_SIZE];
-
 /*
 ** A la ISO/IEC 9945-1, ANSI/IEEE Std 1003.1, 2004 Edition.
 */
@@ -117,7 +115,7 @@ pg_asctime_r(const struct pg_tm *timeptr, char *buf)
 		timeptr->tm_mday, timeptr->tm_hour,
 		timeptr->tm_min, timeptr->tm_sec,
 		year);
-	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime) {
+	if (strlen(result) < STD_ASCTIME_BUF_SIZE) {
 		(void) strcpy(buf, result);
 		return buf;
 	} else {
