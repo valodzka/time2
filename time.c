@@ -39,7 +39,6 @@
 
 VALUE rb_cTime;
 VALUE rb_cTimeZone;
-struct pg_tz * default_timezone = 0;
 
 static VALUE time_utc_offset _((VALUE));
 
@@ -502,17 +501,12 @@ static VALUE time_gmtime(VALUE);
 static VALUE time_localtime(VALUE);
 static VALUE time_get_tm(VALUE, int);
 
-//#ifdef HAVE_GMTIME_R
+static struct pg_tz* timezone_default();
+
 #define IF_HAVE_GMTIME_R(x) x
 #define ASCTIME(tm, buf) pg_asctime_r(tm, buf)
 #define GMTIME(tm, result) pg_gmtime_r(tm, &result)
-#define LOCALTIME(tm, result) pg_localtime_r(tm, default_timezone, &result)
-//#else
-//#define IF_HAVE_GMTIME_R(x) 	/* nothing */
-//#define ASCTIME(tm, buf) asctime(tm)
-//#define GMTIME(tm, result) pg_gmtime(tm)
-//#define LOCALTIME(tm, result) localtime(tm)
-//#endif
+#define LOCALTIME(tm, result) pg_localtime_r(tm, timezone_default(), &result)
 
 static int
 leap_year_p(long y)
@@ -892,7 +886,7 @@ make_time_t(struct pg_tm *tptr, int utc_p)
     }
     else {
 #if defined(HAVE_MKTIME)
-	if ((t = pg_mktime(&buf, default_timezone)) != -1)
+	if ((t = pg_mktime(&buf, timezone_default())) != -1)
 	    return t;
 #ifdef NEGATIVE_TIME_T
 	if ((tmp = LOCALTIME(&t, result)) &&
@@ -2428,6 +2422,33 @@ timezone_get(VALUE klass, VALUE name)
      }
 }
 
+static struct pg_tz*
+timezone_default() 
+{
+    //TODO:add to cache
+    static struct pg_tz* default_timezone = 0;
+
+    if (!default_timezone) {
+        default_timezone = select_default_timezone();
+    }
+
+    return default_timezone;
+}
+
+static VALUE
+timezone_default_get(VALUE klass)
+{    
+    VALUE deflt = rb_iv_get(klass, "@default_tz");
+    if(NIL_P(deflt)) {
+        struct pg_tz * default_timezone = timezone_default();
+        //TODO:add to cache
+        deflt = Data_Wrap_Struct(klass, 0, 0, default_timezone);
+        rb_iv_set(klass, "@default_tz", deflt);
+    }
+    
+    return deflt;
+}
+
 static VALUE
 timezone_name(VALUE timezone) 
 {
@@ -2440,6 +2461,7 @@ timezone_name(VALUE timezone)
     return tz_name ? rb_str_new_cstr(tz_name) : Qnil;
 }
 
+//TODO:WTF it return?
 static VALUE 
 timezone_offset(VALUE timezone) 
 {
@@ -2448,8 +2470,6 @@ timezone_offset(VALUE timezone)
     
     GetTZval(timezone, tz);
     pg_get_timezone_offset(tz, &offset);
-
-    printf("%ld", offset);
 
     return LONG2FIX(offset);
 }
@@ -2561,11 +2581,10 @@ Init_time2(void)
     rb_cTimeZone = rb_define_class_under(rb_cTime, "Zone", rb_cObject);
     
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
+    rb_define_singleton_method(rb_cTimeZone, "default", timezone_default_get, 0);
     
     rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "offset", timezone_offset, 0);
-    
-    default_timezone = select_default_timezone();
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
     rb_define_method(rb_cTime, "marshal_dump", time_mdump, 0);
