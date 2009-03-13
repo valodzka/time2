@@ -506,7 +506,7 @@ static struct pg_tz* timezone_default();
 #define IF_HAVE_GMTIME_R(x) x
 #define ASCTIME(tm, buf) pg_asctime_r(tm, buf)
 #define GMTIME(tm, result) pg_gmtime_r(tm, &result)
-#define LOCALTIME(tm, result) pg_localtime_r(tm, timezone_default(), &result)
+#define LOCALTIME(tm, result) pg_localtime_r(tm, timezone_default(0), &result)
 
 static int
 leap_year_p(long y)
@@ -886,7 +886,7 @@ make_time_t(struct pg_tm *tptr, int utc_p)
     }
     else {
 #if defined(HAVE_MKTIME)
-	if ((t = pg_mktime(&buf, timezone_default())) != -1)
+	if ((t = pg_mktime(&buf, timezone_default(0))) != -1)
 	    return t;
 #ifdef NEGATIVE_TIME_T
 	if ((tmp = LOCALTIME(&t, result)) &&
@@ -2418,18 +2418,21 @@ timezone_get(VALUE klass, VALUE name)
         return obj;
      }
      else {
-        rb_raise(rb_eRuntimeError, "time zone not found");
+        rb_raise(rb_eRuntimeError, "time zone \"%s\" not found", upper_name);
      }
 }
 
 static struct pg_tz*
-timezone_default() 
+timezone_default(struct pg_tz *dflt) 
 {
     //TODO:add to cache
-    static struct pg_tz* default_timezone = 0;
+    static struct pg_tz* default_timezone = NULL;
 
-    if (!default_timezone) {
+    if (default_timezone == NULL && dflt == NULL) {
         default_timezone = select_default_timezone();
+    }
+    else if (dflt != NULL) {
+        default_timezone = dflt;
     }
 
     return default_timezone;
@@ -2440,13 +2443,31 @@ timezone_default_get(VALUE klass)
 {    
     VALUE deflt = rb_iv_get(klass, "@default_tz");
     if(NIL_P(deflt)) {
-        struct pg_tz * default_timezone = timezone_default();
+        struct pg_tz * default_timezone = timezone_default(NULL);
         //TODO:add to cache
         deflt = Data_Wrap_Struct(klass, 0, 0, default_timezone);
         rb_iv_set(klass, "@default_tz", deflt);
     }
     
     return deflt;
+}
+
+static VALUE
+timezone_default_set(VALUE klass, VALUE timezone)
+{
+    struct pg_tz* tz;
+
+    if (TYPE(timezone) == T_STRING)
+        timezone = timezone_get(klass, timezone);
+    else if(!RTEST(rb_obj_is_kind_of(timezone, rb_cTimeZone)))
+        rb_raise(rb_eArgError, "wrong time zone type");
+
+    GetTZval(timezone, tz);
+
+    timezone_default(tz);
+    rb_iv_set(klass, "@defulat_tz", timezone);
+
+    return timezone;
 }
 
 static VALUE
@@ -2582,6 +2603,7 @@ Init_time2(void)
     
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
     rb_define_singleton_method(rb_cTimeZone, "default", timezone_default_get, 0);
+    rb_define_singleton_method(rb_cTimeZone, "default=", timezone_default_set, 1);
     
     rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "offset", timezone_offset, 0);
