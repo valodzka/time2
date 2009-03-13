@@ -8,17 +8,22 @@ int main(int argc, char** argv)
 {
     {
         char buff[0x100];
-        pg_time_t t = 1236899945;
+        pg_time_t t = 1236899945, t2 = 1247999945;
         pg_tz* tz1 = pg_tzset("Europe/Minsk");
         pg_tz* tz2 = pg_tzset("Japan");
 
-        struct pg_tm tm1; 
-        struct pg_tm tm2; 
+        struct pg_tm tm1, tm11; 
+        struct pg_tm tm2, tm22; 
 
 		pg_localtime_r(&t, tz1, &tm1);
 		pg_localtime_r(&t, tz2, &tm2);
+		pg_localtime_r(&t2, tz1, &tm11);
+		pg_localtime_r(&t2, tz2, &tm22);
 
-        printf("Minsk - %d, Japan - %d\n", tm1.tm_hour, tm2.tm_hour);
+        printf("Minsk - %d (%s), Japan - %d (%s)\nMinsk - %d (%s), Japan - %d (%s)\n", 
+			tm1.tm_hour, tm1.tm_zone, tm2.tm_hour, tm2.tm_zone,
+			tm11.tm_hour, tm11.tm_zone, tm22.tm_hour, tm22.tm_zone);
+
         puts(pg_asctime_r(&tm1,buff));
         puts(pg_asctime_r(&tm2,buff));
     }

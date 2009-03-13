@@ -15,6 +15,7 @@
 #include "c.h"
 
 #include <fcntl.h>
+#include "float.h"
 
 #include "private.h"
 #include "pgtz.h"
@@ -1456,3 +1457,358 @@ pg_get_timezone_name(pg_tz *tz)
 	return NULL;
 }
 
+/*
+** Adapted from code provided by Robert Elz, who writes:
+**	The "best" way to do mktime I think is based on an idea of Bob
+**	Kridle's (so its said...) from a long time ago.
+**	It does a binary search of the time_t space. Since time_t's are
+**	just 32 bits, its a max of 32 iterations (even at 64 bits it
+**	would still be very reasonable).
+*/
+
+/*
+** Simplified normalize logic courtesy Paul Eggert.
+*/
+
+static int
+pg_increment_overflow(number, delta)
+int *	number;
+int	delta;
+{
+	int	number0;
+
+	number0 = *number;
+	*number += delta;
+	return (*number < number0) != (delta < 0);
+}
+
+static int
+pg_long_increment_overflow(number, delta)
+long *	number;
+int	delta;
+{
+	long	number0;
+
+	number0 = *number;
+	*number += delta;
+	return (*number < number0) != (delta < 0);
+}
+
+static int
+pg_normalize_overflow(tensptr, unitsptr, base)
+int * const	tensptr;
+int * const	unitsptr;
+const int	base;
+{
+	register int	tensdelta;
+
+	tensdelta = (*unitsptr >= 0) ?
+		(*unitsptr / base) :
+	(-1 - (-1 - *unitsptr) / base);
+	*unitsptr -= tensdelta * base;
+	return pg_increment_overflow(tensptr, tensdelta);
+}
+
+static int
+pg_long_normalize_overflow(tensptr, unitsptr, base)
+long * const	tensptr;
+int * const	unitsptr;
+const int	base;
+{
+	register int	tensdelta;
+
+	tensdelta = (*unitsptr >= 0) ?
+		(*unitsptr / base) :
+	(-1 - (-1 - *unitsptr) / base);
+	*unitsptr -= tensdelta * base;
+	return pg_long_increment_overflow(tensptr, tensdelta);
+}
+
+static int
+pg_tmcomp(const struct pg_tm * const atmp,
+		 const struct pg_tm * const btmp)
+{
+	int	result;
+
+	if ((result = (atmp->tm_year - btmp->tm_year)) == 0 &&
+		(result = (atmp->tm_mon - btmp->tm_mon)) == 0 &&
+		(result = (atmp->tm_mday - btmp->tm_mday)) == 0 &&
+		(result = (atmp->tm_hour - btmp->tm_hour)) == 0 &&
+		(result = (atmp->tm_min - btmp->tm_min)) == 0)
+		result = atmp->tm_sec - btmp->tm_sec;
+	return result;
+}
+
+static pg_time_t
+pg_time2sub(
+struct pg_tm * const	tmp,
+struct pg_tm * (* const	funcp)(const pg_time_t*, long, struct pg_tm*),
+const long		offset,
+int * const		okayp,
+const int		do_norm_secs,
+const pg_tz *tz)
+{
+	register const struct state *	sp;
+	register int			dir;
+	register int			i, j;
+	register int			saved_seconds;
+	register long			li;
+	register time_t			lo;
+	register time_t			hi;
+	long				y;
+	pg_time_t				newt;
+	pg_time_t				t;
+	struct pg_tm			yourtm, mytm;
+
+	*okayp = FALSE;
+	yourtm = *tmp;
+	if (do_norm_secs) {
+		if (pg_normalize_overflow(&yourtm.tm_min, &yourtm.tm_sec,
+			SECSPERMIN))
+			return -1;
+	}
+	if (pg_normalize_overflow(&yourtm.tm_hour, &yourtm.tm_min, MINSPERHOUR))
+		return -1;
+	if (pg_normalize_overflow(&yourtm.tm_mday, &yourtm.tm_hour, HOURSPERDAY))
+		return -1;
+	y = yourtm.tm_year;
+	if (pg_long_normalize_overflow(&y, &yourtm.tm_mon, MONSPERYEAR))
+		return -1;
+	/*
+	** Turn y into an actual year number for now.
+	** It is converted back to an offset from TM_YEAR_BASE later.
+	*/
+	if (pg_long_increment_overflow(&y, TM_YEAR_BASE))
+		return -1;
+	while (yourtm.tm_mday <= 0) {
+		if (pg_long_increment_overflow(&y, -1))
+			return -1;
+		li = y + (1 < yourtm.tm_mon);
+		yourtm.tm_mday += year_lengths[isleap(li)];
+	}
+	while (yourtm.tm_mday > DAYSPERLYEAR) {
+		li = y + (1 < yourtm.tm_mon);
+		yourtm.tm_mday -= year_lengths[isleap(li)];
+		if (pg_long_increment_overflow(&y, 1))
+			return -1;
+	}
+	for ( ; ; ) {
+		i = mon_lengths[isleap(y)][yourtm.tm_mon];
+		if (yourtm.tm_mday <= i)
+			break;
+		yourtm.tm_mday -= i;
+		if (++yourtm.tm_mon >= MONSPERYEAR) {
+			yourtm.tm_mon = 0;
+			if (pg_long_increment_overflow(&y, 1))
+				return -1;
+		}
+	}
+	if (pg_long_increment_overflow(&y, -TM_YEAR_BASE))
+		return -1;
+	yourtm.tm_year = y;
+	if (yourtm.tm_year != y)
+		return -1;
+	if (yourtm.tm_sec >= 0 && yourtm.tm_sec < SECSPERMIN)
+		saved_seconds = 0;
+	else if (y + TM_YEAR_BASE < EPOCH_YEAR) {
+		/*
+		** We can't set tm_sec to 0, because that might push the
+		** time below the minimum representable time.
+		** Set tm_sec to 59 instead.
+		** This assumes that the minimum representable time is
+		** not in the same minute that a leap second was deleted from,
+		** which is a safer assumption than using 58 would be.
+		*/
+		if (pg_increment_overflow(&yourtm.tm_sec, 1 - SECSPERMIN))
+			return -1;
+		saved_seconds = yourtm.tm_sec;
+		yourtm.tm_sec = SECSPERMIN - 1;
+	} else {
+		saved_seconds = yourtm.tm_sec;
+		yourtm.tm_sec = 0;
+	}
+	/*
+	** Do a binary search (this works whatever time_t's type is).
+	*/
+	if (!TYPE_SIGNED(time_t)) {
+		lo = 0;
+		hi = lo - 1;
+	} else if (!TYPE_INTEGRAL(time_t)) {
+		if (sizeof(time_t) > sizeof(float))
+			hi = (time_t) DBL_MAX;
+		else	hi = (time_t) FLT_MAX;
+		lo = -hi;
+	} else {
+		lo = 1;
+		for (i = 0; i < (int) TYPE_BIT(time_t) - 1; ++i)
+			lo *= 2;
+		hi = -(lo + 1);
+	}
+	for ( ; ; ) {
+		t = lo / 2 + hi / 2;
+		if (t < lo)
+			t = lo;
+		else if (t > hi)
+			t = hi;
+		if ((*funcp)(&t, offset, &mytm) == NULL) {
+			/*
+			** Assume that t is too extreme to be represented in
+			** a struct tm; arrange things so that it is less
+			** extreme on the next pass.
+			*/
+			dir = (t > 0) ? 1 : -1;
+		} else	dir = pg_tmcomp(&mytm, &yourtm);
+		if (dir != 0) {
+			if (t == lo) {
+				++t;
+				if (t <= lo)
+					return -1;
+				++lo;
+			} else if (t == hi) {
+				--t;
+				if (t >= hi)
+					return -1;
+				--hi;
+			}
+			if (lo > hi)
+				return -1;
+			if (dir > 0)
+				hi = t;
+			else	lo = t;
+			continue;
+		}
+		if (yourtm.tm_isdst < 0 || mytm.tm_isdst == yourtm.tm_isdst)
+			break;
+		/*
+		** Right time, wrong type.
+		** Hunt for right time, right type.
+		** It's okay to guess wrong since the guess
+		** gets checked.
+		*/
+		sp = (const struct state *)
+			((funcp == localsub) ? &tz->state : gmtptr);
+		for (i = sp->typecnt - 1; i >= 0; --i) {
+			if (sp->ttis[i].tt_isdst != yourtm.tm_isdst)
+				continue;
+			for (j = sp->typecnt - 1; j >= 0; --j) {
+				if (sp->ttis[j].tt_isdst == yourtm.tm_isdst)
+					continue;
+				newt = t + sp->ttis[j].tt_gmtoff -
+					sp->ttis[i].tt_gmtoff;
+				if ((*funcp)(&newt, offset, &mytm) == NULL)
+					continue;
+				if (pg_tmcomp(&mytm, &yourtm) != 0)
+					continue;
+				if (mytm.tm_isdst != yourtm.tm_isdst)
+					continue;
+				/*
+				** We have a match.
+				*/
+				t = newt;
+				goto label;
+			}
+		}
+		return -1;
+	}
+label:
+	newt = t + saved_seconds;
+	if ((newt < t) != (saved_seconds < 0))
+		return -1;
+	t = newt;
+	if ((*funcp)(&t, offset, tmp))
+		*okayp = TRUE;
+	return t;
+}
+
+static pg_time_t
+pg_time2(
+struct pg_tm * const	tmp,
+struct pg_tm * (* const	funcp)(const pg_time_t*, long, struct pg_tm*),
+const long		offset,
+int * const		okayp,
+const pg_tz *tz)
+{
+	pg_time_t	t;
+
+	/*
+	** First try without normalization of seconds
+	** (in case tm_sec contains a value associated with a leap second).
+	** If that fails, try with normalization of seconds.
+	*/
+	t = pg_time2sub(tmp, funcp, offset, okayp, FALSE, tz);
+	return *okayp ? t : pg_time2sub(tmp, funcp, offset, okayp, TRUE, tz);
+}
+
+static pg_time_t
+pg_time1(struct pg_tm * const	tmp, 
+struct pg_tm * (* const	funcp)(const pg_time_t *, long, struct pg_tm *),
+const long		offset,
+const pg_tz *tz)
+{
+	register time_t			t;
+	register const struct state *	sp;
+	register int			samei, otheri;
+	register int			sameind, otherind;
+	register int			i;
+	register int			nseen;
+	int				seen[TZ_MAX_TYPES];
+	int				types[TZ_MAX_TYPES];
+	int				okay;
+
+	if (tmp->tm_isdst > 1)
+		tmp->tm_isdst = 1;
+	t = pg_time2(tmp, funcp, offset, &okay, tz);
+#ifdef PCTS
+	/*
+	** PCTS code courtesy Grant Sullivan.
+	*/
+	if (okay)
+		return t;
+	if (tmp->tm_isdst < 0)
+		tmp->tm_isdst = 0;	/* reset to std and try again */
+#else
+	if (okay || tmp->tm_isdst < 0)
+		return t;
+#endif /* !defined PCTS */
+	/*
+	** We're supposed to assume that somebody took a time of one type
+	** and did some math on it that yielded a "struct tm" that's bad.
+	** We try to divine the type they started from and adjust to the
+	** type they need.
+	*/
+	sp = (const struct state *) ((funcp == localsub) ?  &tz->state : gmtptr);
+
+	for (i = 0; i < sp->typecnt; ++i)
+		seen[i] = FALSE;
+	nseen = 0;
+	for (i = sp->timecnt - 1; i >= 0; --i)
+		if (!seen[sp->types[i]]) {
+			seen[sp->types[i]] = TRUE;
+			types[nseen++] = sp->types[i];
+		}
+		for (sameind = 0; sameind < nseen; ++sameind) {
+			samei = types[sameind];
+			if (sp->ttis[samei].tt_isdst != tmp->tm_isdst)
+				continue;
+			for (otherind = 0; otherind < nseen; ++otherind) {
+				otheri = types[otherind];
+				if (sp->ttis[otheri].tt_isdst == tmp->tm_isdst)
+					continue;
+				tmp->tm_sec += sp->ttis[otheri].tt_gmtoff -
+					sp->ttis[samei].tt_gmtoff;
+				tmp->tm_isdst = !tmp->tm_isdst;
+				t = pg_time2(tmp, funcp, offset, &okay, tz);
+				if (okay)
+					return t;
+				tmp->tm_sec -= sp->ttis[otheri].tt_gmtoff -
+					sp->ttis[samei].tt_gmtoff;
+				tmp->tm_isdst = !tmp->tm_isdst;
+			}
+		}
+		return -1;
+}
+
+pg_time_t pg_mktime(struct pg_tm const *tmp, struct pg_tz const * tz)
+{
+	return pg_time1(tmp, localsub, 0L, tz);
+}
