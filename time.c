@@ -7,11 +7,20 @@
 
   Copyright (C) 1993-2007 Yukihiro Matsumoto
 
-**********************************************************************/
+
+ **********************************************************************/
+
+#include "c.h"
+#include "private.h"
+#include "pgtz.h"
+#include "tzfile.h"
+
+#undef HAVE_INTTYPES_H
+#undef HAVE_SYS_TIME_H
+#undef HAVE_UNISTD_H
 
 #include "ruby/ruby.h"
 #include <sys/types.h>
-#include <time.h>
 #include <errno.h>
 #include "ruby/encoding.h"
 
@@ -26,13 +35,15 @@
 #endif
 
 VALUE rb_cTime;
+struct pg_tz * default_timezone = 0;
+
 static VALUE time_utc_offset _((VALUE));
 
 static ID id_divmod, id_mul, id_submicro;
 
 struct time_object {
     struct timespec ts;
-    struct tm tm;
+    struct pg_tm tm;
     int gmt;
     int tm_got;
 };
@@ -384,7 +395,7 @@ obj2long1000(VALUE obj)
 }
 
 static void
-time_arg(int argc, VALUE *argv, struct tm *tm, long *nsec)
+time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec)
 {
     VALUE v[8];
     int i;
@@ -487,17 +498,17 @@ static VALUE time_gmtime(VALUE);
 static VALUE time_localtime(VALUE);
 static VALUE time_get_tm(VALUE, int);
 
-#ifdef HAVE_GMTIME_R
+//#ifdef HAVE_GMTIME_R
 #define IF_HAVE_GMTIME_R(x) x
-#define ASCTIME(tm, buf) asctime_r(tm, buf)
-#define GMTIME(tm, result) gmtime_r(tm, &result)
-#define LOCALTIME(tm, result) (tzset(),localtime_r(tm, &result))
-#else
-#define IF_HAVE_GMTIME_R(x) 	/* nothing */
-#define ASCTIME(tm, buf) asctime(tm)
-#define GMTIME(tm, result) gmtime(tm)
-#define LOCALTIME(tm, result) localtime(tm)
-#endif
+#define ASCTIME(tm, buf) pg_asctime_r(tm, buf)
+#define GMTIME(tm, result) pg_gmtime_r(tm, &result)
+#define LOCALTIME(tm, result) pg_localtime_r(tm, default_timezone, &result)
+//#else
+//#define IF_HAVE_GMTIME_R(x) 	/* nothing */
+//#define ASCTIME(tm, buf) asctime(tm)
+//#define GMTIME(tm, result) pg_gmtime(tm)
+//#define LOCALTIME(tm, result) localtime(tm)
+//#endif
 
 static int
 leap_year_p(long y)
@@ -508,7 +519,7 @@ leap_year_p(long y)
 #define DIV(n,d) ((n)<0 ? NDIV((n),(d)) : (n)/(d))
 
 static time_t
-timegm_noleapsecond(struct tm *tm)
+timegm_noleapsecond(struct pg_tm *tm)
 {
     static const int common_year_yday_offset[] = {
 	-1,
@@ -563,7 +574,7 @@ timegm_noleapsecond(struct tm *tm)
 }
 
 static int
-tmcmp(struct tm *a, struct tm *b)
+tmcmp(struct pg_tm *a, struct pg_tm *b)
 {
     if (a->tm_year != b->tm_year)
 	return a->tm_year < b->tm_year ? -1 : 1;
@@ -592,13 +603,13 @@ typedef unsigned LONG_LONG unsigned_time_t;
 #endif
 
 static time_t
-search_time_t(struct tm *tptr, int utc_p)
+search_time_t(struct pg_tm *tptr, int utc_p)
 {
     time_t guess, guess_lo, guess_hi;
-    struct tm *tm, tm_lo, tm_hi;
+    struct pg_tm *tm, tm_lo, tm_hi;
     int d, have_guess;
     int find_dst;
-    IF_HAVE_GMTIME_R(struct tm result);
+    IF_HAVE_GMTIME_R(struct pg_tm result);
 #define GUESS(p) (utc_p ? GMTIME(p, result) : LOCALTIME(p, result))
 
     find_dst = 0 < tptr->tm_isdst;
@@ -847,14 +858,14 @@ search_time_t(struct tm *tptr, int utc_p)
 }
 
 static time_t
-make_time_t(struct tm *tptr, int utc_p)
+make_time_t(struct pg_tm *tptr, int utc_p)
 {
-    time_t t;
+    pg_time_t t;
 #ifdef NEGATIVE_TIME_T
-    struct tm *tmp;
+    struct pg_tm *tmp;
 #endif
-    struct tm buf;
-    IF_HAVE_GMTIME_R(struct tm result);
+    struct pg_tm buf;
+    struct pg_tm result;
 
     buf = *tptr;
     if (utc_p) {
@@ -877,7 +888,7 @@ make_time_t(struct tm *tptr, int utc_p)
     }
     else {
 #if defined(HAVE_MKTIME)
-	if ((t = mktime(&buf)) != -1)
+	if ((t = pg_mktime(&buf, default_timezone)) != -1)
 	    return t;
 #ifdef NEGATIVE_TIME_T
 	if ((tmp = LOCALTIME(&t, result)) &&
@@ -898,7 +909,7 @@ make_time_t(struct tm *tptr, int utc_p)
 static VALUE
 time_utc_or_local(int argc, VALUE *argv, int utc_p, VALUE klass)
 {
-    struct tm tm;
+    struct pg_tm tm;
     VALUE time;
     long nsec;
 
@@ -1244,9 +1255,9 @@ static VALUE
 time_localtime(VALUE time)
 {
     struct time_object *tobj;
-    struct tm *tm_tmp;
-    time_t t;
-    IF_HAVE_GMTIME_R(struct tm result);
+    struct pg_tm *tm_tmp;
+    pg_time_t t;
+    struct pg_tm result;
 
     GetTimeval(time, tobj);
     if (!tobj->gmt) {
@@ -1288,9 +1299,9 @@ static VALUE
 time_gmtime(VALUE time)
 {
     struct time_object *tobj;
-    struct tm *tm_tmp;
-    time_t t;
-    IF_HAVE_GMTIME_R(struct tm result);
+    struct pg_tm *tm_tmp;
+    pg_time_t t;
+    IF_HAVE_GMTIME_R(struct pg_tm result);
 
     GetTimeval(time, tobj);
     if (tobj->gmt) {
@@ -1373,7 +1384,7 @@ time_asctime(VALUE time)
 {
     struct time_object *tobj;
     char *s;
-    IF_HAVE_GMTIME_R(char buf[32]);
+    char buf[32];
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
@@ -1381,10 +1392,6 @@ time_asctime(VALUE time)
     }
     s = ASCTIME(&tobj->tm, buf);
     if (s[24] == '\n') s[24] = '\0';
-#if (defined(_MSC_VER) && defined(_DLL)) || defined(__MSVCRT__)
-    /* workaround for MSVCRT's bug */
-    if (s[8] == '0') s[8] = ' ';
-#endif
 
     return rb_str_new2(s);
 }
@@ -1437,7 +1444,7 @@ time_add(struct time_object *tobj, VALUE offset, int sign)
     double v = NUM2DBL(offset);
     double f, d;
     unsigned_time_t sec_off;
-    time_t sec;
+    pg_time_t sec;
     long nsec_off, nsec;
     VALUE result;
 
@@ -1984,10 +1991,10 @@ time_utc_offset(VALUE time)
 #if defined(HAVE_STRUCT_TM_TM_GMTOFF)
 	return INT2NUM(tobj->tm.tm_gmtoff);
 #else
-	struct tm *u, *l;
+	struct pg_tm *u, *l;
 	time_t t;
 	long off;
-	IF_HAVE_GMTIME_R(struct tm result);
+	struct pg_tm result;
 	l = &tobj->tm;
 	t = tobj->ts.tv_sec;
 	u = GMTIME(&t, result);
@@ -2187,14 +2194,14 @@ static VALUE
 time_mdump(VALUE time)
 {
     struct time_object *tobj;
-    struct tm *tm;
+    struct pg_tm *tm;
     unsigned long p, s;
     char buf[8];
-    time_t t;
+    pg_time_t t;
     int nsec;
     int i;
     VALUE str;
-    IF_HAVE_GMTIME_R(struct tm result);
+    IF_HAVE_GMTIME_R(struct pg_tm result);
 
     GetTimeval(time, tobj);
 
@@ -2278,7 +2285,7 @@ time_mload(VALUE time, VALUE str)
     time_t sec;
     long usec;
     unsigned char *buf;
-    struct tm tm;
+    struct pg_tm tm;
     int i, gmt;
     long nsec;
     VALUE submicro;
@@ -2476,6 +2483,8 @@ Init_Time(void)
     /* methods for marshaling */
     rb_define_method(rb_cTime, "_dump", time_dump, -1);
     rb_define_singleton_method(rb_cTime, "_load", time_load, 1);
+
+	default_timezone = select_default_timezone();
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
     rb_define_method(rb_cTime, "marshal_dump", time_mdump, 0);
