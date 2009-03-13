@@ -1399,9 +1399,12 @@ pg_tzenum *
 pg_tzenumerate_start(void)
 {
 	pg_tzenum  *ret = (pg_tzenum *) malloc(sizeof(pg_tzenum));
-	char	   *startdir = strdup(pg_TZDIR());
+	char	   *startdir = 0, *tzdir = pg_TZDIR();
+
+	startdir = malloc((strlen(tzdir)+1)*sizeof(char));
+	strcpy(startdir,tzdir);
         
-        memset(ret, 0, sizeof(pg_tzenum));
+    memset(ret, 0, sizeof(pg_tzenum));
 
 	ret->baselen = strlen(startdir) + 1;
 	ret->depth = 0;
@@ -1464,7 +1467,8 @@ pg_tzenumerate_next(pg_tzenum *dir)
 				ereport(ERROR,
 						(errmsg("timezone directory stack overflow")));
 			dir->depth++;
-			dir->dirname[dir->depth] = strdup(fullname);
+			dir->dirname[dir->depth] = malloc((strlen(fullname)+1)*sizeof(char));
+			strcpy(dir->dirname[dir->depth], fullname);
 			dir->dirdesc[dir->depth] = opendir(fullname);
 			if (!dir->dirdesc[dir->depth])
 				ereport(ERROR,

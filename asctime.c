@@ -103,8 +103,7 @@ pg_asctime_r(const struct pg_tm *timeptr, char *buf)
 	** Assume that strftime is unaffected by other out-of-range members
 	** (e.g., timeptr->tm_mday) when processing "%Y".
 	*/
-        memset(&tm, 0, sizeof(struct tm));
-        tm.tm_year = timeptr->tm_year;
+    tm.tm_year = timeptr->tm_year;
 	(void) strftime(year, sizeof year, "%Y", &tm);
 	/*
 	** We avoid using snprintf since it's not available on all systems.
