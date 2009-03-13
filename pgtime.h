@@ -44,6 +44,8 @@ extern struct pg_tm *pg_localtime_r(const pg_time_t *timep,
                                     const pg_tz *tz, 
                                     struct pg_tm *tm);
 extern struct pg_tm *pg_gmtime_r(const pg_time_t *timep, struct pg_tm *tm);
+extern char * pg_asctime_r(const struct pg_tm *tm,  char * buf);
+
 extern int pg_next_dst_boundary(const pg_time_t *timep,
 					 long int *before_gmtoff,
 					 int *before_isdst,

@@ -1455,3 +1455,4 @@ pg_get_timezone_name(pg_tz *tz)
 		return tz->TZname;
 	return NULL;
 }
+
