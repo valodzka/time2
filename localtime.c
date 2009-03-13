@@ -1542,7 +1542,7 @@ pg_tmcomp(const struct pg_tm * const atmp,
 static pg_time_t
 pg_time2sub(
 struct pg_tm * const	tmp,
-struct pg_tm * (* const	funcp)(const pg_time_t*, long, struct pg_tm*),
+struct pg_tm * (* const	funcp)(const pg_time_t*, long, struct pg_tm*, struct pg_tz const *),
 const long		offset,
 int * const		okayp,
 const int		do_norm_secs,
@@ -1650,7 +1650,7 @@ const pg_tz *tz)
 			t = lo;
 		else if (t > hi)
 			t = hi;
-		if ((*funcp)(&t, offset, &mytm) == NULL) {
+		if ((*funcp)(&t, offset, &mytm, tz) == NULL) {
 			/*
 			** Assume that t is too extreme to be represented in
 			** a struct tm; arrange things so that it is less
@@ -1695,7 +1695,7 @@ const pg_tz *tz)
 					continue;
 				newt = t + sp->ttis[j].tt_gmtoff -
 					sp->ttis[i].tt_gmtoff;
-				if ((*funcp)(&newt, offset, &mytm) == NULL)
+				if ((*funcp)(&newt, offset, &mytm, tz) == NULL)
 					continue;
 				if (pg_tmcomp(&mytm, &yourtm) != 0)
 					continue;
@@ -1715,7 +1715,7 @@ label:
 	if ((newt < t) != (saved_seconds < 0))
 		return -1;
 	t = newt;
-	if ((*funcp)(&t, offset, tmp))
+	if ((*funcp)(&t, offset, tmp, tz))
 		*okayp = TRUE;
 	return t;
 }
@@ -1723,7 +1723,7 @@ label:
 static pg_time_t
 pg_time2(
 struct pg_tm * const	tmp,
-struct pg_tm * (* const	funcp)(const pg_time_t*, long, struct pg_tm*),
+struct pg_tm * (* const	funcp)(const pg_time_t*, long, struct pg_tm*, struct pg_tz const * ),
 const long		offset,
 int * const		okayp,
 const pg_tz *tz)
@@ -1741,7 +1741,7 @@ const pg_tz *tz)
 
 static pg_time_t
 pg_time1(struct pg_tm * const	tmp, 
-struct pg_tm * (* const	funcp)(const pg_time_t *, long, struct pg_tm *),
+struct pg_tm * (* const	funcp)(const pg_time_t *, long, struct pg_tm *, struct pg_tz const *),
 const long		offset,
 const pg_tz *tz)
 {
