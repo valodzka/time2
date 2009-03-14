@@ -102,7 +102,7 @@ extern const char *scheck(const char *string, const char *format);
 #define _(msgid) (msgid)
 
 #ifndef YEARSPERREPEAT
-#define YEARSPERREPEAT          400     /* years before a Gregorian repeat */
+#define YEARSPERREPEAT          400L     /* years before a Gregorian repeat */
 #endif /* !defined YEARSPERREPEAT */
 
 /*
@@ -114,7 +114,7 @@ extern const char *scheck(const char *string, const char *format);
 #endif /* !defined AVGSECSPERYEAR */
 
 #ifndef SECSPERREPEAT
-#define SECSPERREPEAT           ((pg_time_t) YEARSPERREPEAT * (pg_time_t) AVGSECSPERYEAR)
+#define SECSPERREPEAT           (YEARSPERREPEAT * AVGSECSPERYEAR)
 #endif /* !defined SECSPERREPEAT */
 
 #ifndef SECSPERREPEAT_BITS

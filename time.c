@@ -2224,6 +2224,30 @@ time_strftime(VALUE time, VALUE format)
     return str;
 }
 
+static VALUE
+time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementation
+{
+    struct pg_tm tm;
+    struct pg_tz *tz;
+    VALUE time;
+    int utc_p;
+
+    memset(&tm, 0, sizeof(tm));
+    pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm);
+    if(tm.tm_zone && strcmp("GMT", tm.tm_zone) == 0) {
+        tz = timezone_utc();
+        utc_p = 1;
+    }
+    else {//currently no timezone support
+        tz == timezone_default();
+        utc_p = 0;
+    }
+
+    time = time_new_internal(klass, make_time_t(&tm, tz, utc_p), 0, tz);
+    if (utc_p) return time_gmtime(time);
+    return time_localtime_with_tz(time, tz);
+}
+
 /*
  * undocumented
  */
@@ -2570,6 +2594,7 @@ Init_time2(void)
     rb_define_singleton_method(rb_cTime, "gm", time_s_mkutc, -1);
     rb_define_singleton_method(rb_cTime, "local", time_s_mktime, -1);
     rb_define_singleton_method(rb_cTime, "mktime", time_s_mktime, -1);
+    rb_define_singleton_method(rb_cTime, "strptime", time_strptime, 2);
 
     rb_define_method(rb_cTime, "to_i", time_to_i, 0);
     rb_define_method(rb_cTime, "to_f", time_to_f, 0);

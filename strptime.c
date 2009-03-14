@@ -53,8 +53,6 @@
 /* SOURCE: http://www.freebsd.org.ua/cgi/cvsweb.cgi/src/lib/libc/stdtime/?cvsroot=freebsd */
 #ifndef lint
 #ifndef NOID
-static char copyright[] =
-"@(#) Copyright (c) 1994 Powerdog Industries.  All rights reserved.";
 static char sccsid[]  = "@(#)strptime.c	0.1 (Powerdog) 94/03/27";
 #endif /* !defined NOID */
 #endif /* not lint */
@@ -522,6 +520,7 @@ label:
 				zonestr[TZ_STRLEN_MAX] = '\0';
 				// TODO: normal implementation
 				if (0 == strcmp(zonestr, "GMT")) {
+                                    tm->tm_zone = "GMT";
 				    *GMTp = 1;
 				}
 				else {
