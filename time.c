@@ -182,7 +182,7 @@ time_overflow_p(time_t *secp, long *nsecp)
 }
 
 static VALUE
-time_new_internal(VALUE klass, time_t sec, long nsec)
+time_new_internal(VALUE klass, pg_time_t sec, long nsec, struct pg_tz const * tz)
 {
     VALUE time = time_s_alloc(klass);
     struct time_object *tobj;
@@ -191,21 +191,33 @@ time_new_internal(VALUE klass, time_t sec, long nsec)
     time_overflow_p(&sec, &nsec);
     tobj->ts.tv_sec = sec;
     tobj->ts.tv_nsec = nsec;
-    tobj->tz = timezone_default(NULL);
+    tobj->tz = tz;
 
     return time;
 }
 
 VALUE
-rb_time_new(time_t sec, long usec)
+rb_time_with_tz_new(pg_time_t sec, long usec, struct pg_tz const * tz)
 {
-    return time_new_internal(rb_cTime, sec, usec * 1000);
+    return time_new_internal(rb_cTime, sec, usec * 1000, tz);
 }
 
 VALUE
-rb_time_nano_new(time_t sec, long nsec)
+rb_time_new(pg_time_t sec, long usec)
 {
-    return time_new_internal(rb_cTime, sec, nsec);
+    return time_new_internal(rb_cTime, sec, usec * 1000, timezone_default());
+}
+
+VALUE
+rb_time_with_tz_nano_new(pg_time_t sec, long nsec, struct pg_tz const * tz)
+{
+    return time_new_internal(rb_cTime, sec, nsec, tz);
+}
+
+VALUE
+rb_time_nano_new(pg_time_t sec, long nsec)
+{
+    return time_new_internal(rb_cTime, sec, nsec, timezone_default());
 }
 
 static struct timespec
@@ -359,7 +371,7 @@ time_s_at(int argc, VALUE *argv, VALUE klass)
     else {
 	ts = rb_time_timespec(time);
     }
-    t = time_new_internal(klass, ts.tv_sec, ts.tv_nsec);
+    t = time_new_internal(klass, ts.tv_sec, ts.tv_nsec, timezone_default());
     if (TYPE(time) == T_DATA && RDATA(time)->dfree == time_free) {
 	struct time_object *tobj, *tobj2;
 
@@ -930,7 +942,7 @@ time_utc_or_local(int argc, VALUE *argv, int utc_p, VALUE klass)
     long nsec;
 
     time_arg(argc, argv, &tm, &nsec, &tz);
-    time = time_new_internal(klass, make_time_t(&tm, tz, utc_p), nsec);
+    time = time_new_internal(klass, make_time_t(&tm, tz, utc_p), nsec, tz);
     if (utc_p) return time_gmtime(time);
     return time_localtime_with_tz(time, tz);
 }
@@ -1535,7 +1547,7 @@ time_add(struct time_object *tobj, VALUE offset, int sign)
 	if (sec < tobj->ts.tv_sec)
 	    rb_raise(rb_eRangeError, "time + %f out of Time range", v);
     }
-    result = rb_time_nano_new(sec, nsec);
+    result = rb_time_with_tz_nano_new(sec, nsec, tobj->tz);
     if (tobj->gmt) {
 	GetTimeval(result, tobj);
 	tobj->gmt = 1;
@@ -1621,7 +1633,7 @@ time_succ(VALUE time)
 
     GetTimeval(time, tobj);
     gmt = tobj->gmt;
-    time = rb_time_nano_new(tobj->ts.tv_sec + 1, tobj->ts.tv_nsec);
+    time = rb_time_wihth_tz_nano_new(tobj->ts.tv_sec + 1, tobj->ts.tv_nsec, tobj->tz);
     GetTimeval(time, tobj);
     tobj->gmt = gmt;
     return time;
