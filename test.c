@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "postgres.h"
+#include "c.h"
 #include "pgtime.h"
 #include "pgtz.h"
 

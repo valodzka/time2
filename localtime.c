@@ -134,7 +134,7 @@ detzcode64(const char *codep)
 	pg_time_t result;
 	int    i;
 
-	result = (codep[0] & 0x80) ?  (~(int64) 0) : 0;
+	result = (codep[0] & 0x80) ?  (~(pg_time_t) 0) : 0;
 	for (i = 0; i < 8; ++i)
 		result = result * 256 + (codep[i] & 0xff);
 	return result;
@@ -1002,7 +1002,7 @@ localsub(const pg_time_t *timep, long offset,
 		pg_time_t	newt = t;
 		pg_time_t	seconds;
 		pg_time_t	tcycles;
-		int64		icycles;
+		pg_time_t	icycles;
  
 		if (t < sp->ats[0])
 			seconds = sp->ats[0] - t;
@@ -1329,8 +1329,8 @@ pg_next_dst_boundary(const pg_time_t *timep,
 		pg_time_t	newt = t;
 		pg_time_t	seconds;
 		pg_time_t	tcycles;
-		int64		icycles;
-		int			result;
+		pg_time_t       icycles;
+		int		result;
 		
 		if (t < sp->ats[0])
 			seconds = sp->ats[0] - t;

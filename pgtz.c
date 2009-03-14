@@ -12,7 +12,7 @@
  */
 #define NO_REDEFINE_TIMEFUNCS
 
-#include "postgres.h"
+#include "c.h"
 #include <ruby/ruby.h>
 
 #include <ctype.h>
@@ -152,7 +152,13 @@ pg_open_tzfile(const char *name, char *canonname)
                 canonname[TZ_STRLEN_MAX] = '\0';
         }
 
-	return open(fullname, O_RDONLY | PG_BINARY, 0);
+#ifdef O_BINARY
+#  define O_RDONLY_BINARY (O_RDONLY|O_BINARY)
+#else
+#  define O_RDONLY_BINARY (O_RDONLY)
+#endif
+	return open(fullname, O_RDONLY_BINARY, 0);
+#undef O_RDONLY_BINARY
 }
 
 

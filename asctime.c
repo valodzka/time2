@@ -17,7 +17,7 @@ static char	elsieid[] = "@(#)asctime.c	8.2";
 
 /*LINTLIBRARY*/
 #include <time.h>
-#include "postgres.h"
+#include "c.h"
 #include "pgtime.h"
 #include "pgtz.h"
 #include "private.h"

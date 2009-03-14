@@ -114,7 +114,7 @@ extern const char *scheck(const char *string, const char *format);
 #endif /* !defined AVGSECSPERYEAR */
 
 #ifndef SECSPERREPEAT
-#define SECSPERREPEAT           ((int64) YEARSPERREPEAT * (int64) AVGSECSPERYEAR)
+#define SECSPERREPEAT           ((pg_time_t) YEARSPERREPEAT * (pg_time_t) AVGSECSPERYEAR)
 #endif /* !defined SECSPERREPEAT */
 
 #ifndef SECSPERREPEAT_BITS

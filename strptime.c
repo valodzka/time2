@@ -59,7 +59,6 @@ static char sccsid[]  = "@(#)strptime.c	0.1 (Powerdog) 94/03/27";
 #endif /* !defined NOID */
 #endif /* not lint */
 
-
 #include "c.h"
 #include "private.h"
 #include "pgtz.h"
@@ -521,19 +520,13 @@ label:
 			if (cp - buf) {
 				strncpy(zonestr, buf, TZ_STRLEN_MAX);
 				zonestr[TZ_STRLEN_MAX] = '\0';
-				// TODO: normail implementation
+				// TODO: normal implementation
 				if (0 == strcmp(zonestr, "GMT")) {
 				    *GMTp = 1;
 				}
 				else {
-					struct pg_tz *tz = pg_tzset(zonestr);
-					
-					if (tz) 
-						tm->tm_zone = tz->TZname;
-					else 
-						return 0;
-				}
-				
+                                    rb_notimplement();
+				}				
 				//} else if (0 == strcmp(zonestr, tzname[0])) {
 				    //tm->tm_isdst = 0;
 				//} else if (0 == strcmp(zonestr, tzname[1])) {
@@ -549,19 +542,10 @@ label:
 
 
 char *
-pg_strptime(const char * buf, const char * fmt,
-    struct pg_tm * tm)
+pg_strptime(const char * buf, const char * fmt,  struct pg_tm * tm)
 {
 	char *ret;
-	int gmt;
+	int gmt = 0;
 
-	gmt = 0;	
-	ret = _pg_strptime(buf, fmt, tm, &gmt);
-	if (ret && gmt) {
-		//TODO
-		//time_t t = timegm(tm);
-		//localtime_r(&t, tm);
-	}
-
-	return (ret);
+	return  _pg_strptime(buf, fmt, tm, &gmt);
 }
