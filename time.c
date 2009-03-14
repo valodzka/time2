@@ -43,6 +43,7 @@ VALUE rb_cTimeZone;
 
 static VALUE time_utc_offset _((VALUE));
 static struct pg_tz* timezone_default();
+static struct pg_tz* timezone_utc();
 static struct pg_tz* timezone_cached_get(const char *name);
 
 static ID id_divmod, id_mul, id_submicro;
@@ -883,7 +884,7 @@ make_time_t(struct pg_tm *tptr, struct pg_tz *tz, int utc_p)
     buf = *tptr;
     if (utc_p) {
 #if defined(HAVE_TIMEGM)
-	if ((t = timegm(&buf)) != -1)
+	if ((t = pg_mktime(&buf, timezone_utc())) != -1)
 	    return t;
 #ifdef NEGATIVE_TIME_T
 	if ((tmp = GMTIME(&t, result)) &&
@@ -1018,12 +1019,10 @@ time_s_mktime(int argc, VALUE *argv, VALUE klass)
 static VALUE
 time_to_i(VALUE time)
 {
-	//TODO:uncomment
-    //struct time_object *tobj;
+    struct time_object *tobj;
 
-    //GetTimeval(time, tobj);
-    //return TIMET2NUM(tobj->ts.tv_sec);
-	return LONG2FIX(0L);
+    GetTimeval(time, tobj);
+    return TIMET2NUM(tobj->ts.tv_sec);
 }
 
 /*
@@ -1210,20 +1209,18 @@ time_utc_p(VALUE time)
 static VALUE
 time_hash(VALUE time)
 {
-	//TODO:uncomment
-    //struct time_object *tobj;
-    //long hash;
+    struct time_object *tobj;
+    long hash;
 
-    //GetTimeval(time, tobj);
+    GetTimeval(time, tobj);
 #if SIZEOF_TIME_T > SIZEOF_INT
-    //hash = rb_hash_start((unsigned int)(tobj->ts.tv_sec >> (SIZEOF_INT * CHAR_BIT)));
-    //hash = rb_hash_uint(hash, (unsigned int)tobj->ts.tv_sec);
+    hash = rb_hash_start((unsigned int)(tobj->ts.tv_sec >> (SIZEOF_INT * CHAR_BIT)));
+    hash = rb_hash_uint(hash, (unsigned int)tobj->ts.tv_sec);
 #else
-    //hash = rb_hash_start((unsigned int)tobj->ts.tv_sec);
+    hash = rb_hash_start((unsigned int)tobj->ts.tv_sec);
 #endif
-    //hash = rb_hash_end(rb_hash_uint(hash, tobj->ts.tv_nsec));
-    //return LONG2FIX(hash);
-	return LONG2FIX(0L);
+    hash = rb_hash_end(rb_hash_uint(hash, tobj->ts.tv_nsec));
+    return LONG2FIX(hash);
 }
 
 /* :nodoc: */
@@ -2436,12 +2433,15 @@ timezone_cached_get(const char *name)
     return (struct pg_tz*)value;
 }
 
-static VALUE
-timezone_get(VALUE klass, VALUE name) 
-{    
-   struct pg_tz* tz = timezone_cached_get(StringValueCStr(name));
-
-   return Data_Wrap_Struct(klass, 0, 0, tz);
+static struct pg_tz*
+timezone_utc()
+{
+    static struct pg_tz *utc_tz = NULL;
+    
+    if (!utc_tz)
+        utc_tz = timezone_cached_get("UTC");
+    
+    return utc_tz;
 }
 
 static struct pg_tz*
@@ -2450,15 +2450,25 @@ timezone_default(struct pg_tz *dflt)
     //TODO:add to cache
     static struct pg_tz* default_timezone = NULL;
 
-    if (default_timezone == NULL && dflt == NULL) {
+    if (!default_timezone && !dflt) {
         default_timezone = select_default_timezone();
     }
-    else if (dflt != NULL) {
+    else if (dflt) {
         default_timezone = dflt;
     }
 
     return default_timezone;
 }
+
+static VALUE
+timezone_get(VALUE klass, VALUE name) 
+{    
+   struct pg_tz* tz = timezone_cached_get(StringValueCStr(name));
+
+   return Data_Wrap_Struct(klass, 0, 0, tz);
+}
+
+
 
 static VALUE
 timezone_default_get(VALUE klass)
@@ -2609,6 +2619,9 @@ Init_time2(void)
     rb_define_singleton_method(rb_cTime, "_load", time_load, 1);
 
     rb_cTimeZone = rb_define_class_under(rb_cTime, "Zone", rb_cObject);
+    
+    //rb_define_const(rb_cTimeZone, "UTC", timezone_get(rb_cTimeZone, rb_str_new));
+    //rb_define_virtual_variable()
     
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
     rb_define_singleton_method(rb_cTimeZone, "default", timezone_default_get, 0);
