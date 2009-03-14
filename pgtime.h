@@ -72,5 +72,6 @@ extern void pg_tzenumerate_end(pg_tzenum *dir);
 extern pg_tz *select_default_timezone(void);
 /* Maximum length of a timezone name (not including trailing null) */
 #define TZ_STRLEN_MAX 255
+#define STD_ASCTIME_BUF_SIZE	26
 
 #endif   /* _PGTIME_H */

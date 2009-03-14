@@ -22,7 +22,6 @@
 
 #include "ruby/ruby.h"
 #include "ruby/st.h"
-#include "pgtime.h"
 #include <sys/types.h>
 #include <errno.h>
 
@@ -51,6 +50,7 @@ static ID id_divmod, id_mul, id_submicro;
 struct time_object {
     struct timespec ts;
     struct pg_tm tm;
+    struct pg_tz const * tz;
     int gmt;
     int tm_got;
 };
@@ -129,6 +129,7 @@ time_init(VALUE time)
     tobj->tm_got=0;
     tobj->ts.tv_sec = 0;
     tobj->ts.tv_nsec = 0;
+    tobj->tz = timezone_default(NULL);
 #ifdef HAVE_CLOCK_GETTIME
     if (clock_gettime(CLOCK_REALTIME, &tobj->ts) == -1) {
 	rb_sys_fail("clock_gettime");
@@ -190,6 +191,7 @@ time_new_internal(VALUE klass, time_t sec, long nsec)
     time_overflow_p(&sec, &nsec);
     tobj->ts.tv_sec = sec;
     tobj->ts.tv_nsec = nsec;
+    tobj->tz = timezone_default(NULL);
 
     return time;
 }
@@ -520,7 +522,6 @@ static VALUE time_get_tm(VALUE, int);
 
 
 #define IF_HAVE_GMTIME_R(x) x
-#define ASCTIME(tm, buf) pg_asctime_r(tm, buf)
 #define GMTIME(tm, result) pg_gmtime_r(tm, &result)
 #define LOCALTIME(tm, result) pg_localtime_r(tm, timezone_default(0), &result)
 
@@ -1257,21 +1258,21 @@ time_localtime_with_tz(VALUE time, struct pg_tz const * tz)
     pg_time_t t;
     struct pg_tm result;
 
-
     GetTimeval(time, tobj);
-    //TODO: should be value cached?
-    //if (!tobj->gmt) {
-//	if (tobj->tm_got)
-//	    return time;
-  //  }
-    //else {
+
+    if (!tobj->gmt) {
+	if (tobj->tm_got && tobj->tz == tz)
+	    return time;
+    }
+    else {
 	time_modify(time);
-    //}
+    }
     t = tobj->ts.tv_sec;
     tm_tmp = pg_localtime_r(&t, tz, &result);
     if (!tm_tmp)
 	rb_raise(rb_eArgError, "localtime error");
     tobj->tm = *tm_tmp;
+    tobj->tz = tz;
     tobj->tm_got = 1;
     tobj->gmt = 0;
     return time;
@@ -1394,7 +1395,11 @@ static VALUE
 time_get_tm(VALUE time, int gmt)
 {
     if (gmt) return time_gmtime(time);
-    return time_localtime_with_tz(time, timezone_default(NULL));//TODO:tz whould be stored
+    else {
+        struct time_object* tobj;
+        GetTimeval(time, tobj);
+        return time_localtime_with_tz(time, tobj->tz);
+    }
 }
 
 /*
@@ -1412,17 +1417,48 @@ time_asctime(VALUE time)
 {
     struct time_object *tobj;
     char *s;
-    char buf[32];
+    char buf[STD_ASCTIME_BUF_SIZE];
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
 	time_get_tm(time, tobj->gmt);
     }
-    s = ASCTIME(&tobj->tm, buf);
-    if (s[24] == '\n') s[24] = '\0';
+    s = pg_asctime_r(&tobj->tm, buf);
+    if(!s) rb_sys_fail("asctime");
 
     return rb_str_new2(s);
 }
+
+#ifdef HAVE_TM_ZONE
+#  define COPY_TZ(x) x
+#else
+#  define COPY_TZ (x)
+#endif
+
+#ifdef HAVE_STRUCT_TM_TM_GMTOFF
+#  define COPY_GMTOFF(x) x
+#else
+#  define COPY_GMTOFF(x)
+#endif
+
+
+#define RB_STRFTIME(s, maxsize, format, timeptr, ts, gmt, ret) \
+  do { \
+    struct tm old_system_tm; \
+    	old_system_tm.tm_sec = (timeptr)->tm_sec; \
+	old_system_tm.tm_min = (timeptr)->tm_min;\
+	old_system_tm.tm_hour = (timeptr)->tm_hour;\
+	old_system_tm.tm_mday = (timeptr)->tm_mday;\
+	old_system_tm.tm_mon = (timeptr)->tm_mon;\
+	old_system_tm.tm_year = (timeptr)->tm_year;\
+	old_system_tm.tm_wday = (timeptr)->tm_wday;\
+	old_system_tm.tm_yday = (timeptr)->tm_yday;\
+	old_system_tm.tm_isdst = (timeptr)->tm_isdst;\
+	COPY_GMTOFF(old_system_tm.tm_gmtoff = (timeptr)->tm_gmtoff);\
+	COPY_TZ(old_system_tm.tm_zone = (timeptr)->tm_zone);\
+        len = rb_strftime(s, maxsize, format,  \
+	    &old_system_tm, ts, gmt);\
+  } while(0)
 
 size_t
 rb_strftime(char *s, size_t maxsize, const char *format,
@@ -1456,12 +1492,12 @@ time_to_s(VALUE time)
 	time_get_tm(time, tobj->gmt);
     }
     if (tobj->gmt == 1) {
-	len = rb_strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S UTC",
-			  &tobj->tm, &tobj->ts, tobj->gmt);
+	RB_STRFTIME(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S UTC",
+			  &tobj->tm, &tobj->ts, tobj->gmt, len);
     }
     else {
-	len = rb_strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S %z",
-			  &tobj->tm, &tobj->ts, tobj->gmt);
+	RB_STRFTIME(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S %z",
+			  &tobj->tm, &tobj->ts, tobj->gmt, len);
     }
     return rb_str_new(buf, len);
 }
@@ -1963,10 +1999,6 @@ static VALUE
 time_zone(VALUE time)
 {
     struct time_object *tobj;
-#if !defined(HAVE_TM_ZONE) && (!defined(HAVE_TZNAME) || !defined(HAVE_DAYLIGHT))
-    char buf[64];
-    int len;
-#endif
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
@@ -1976,15 +2008,8 @@ time_zone(VALUE time)
     if (tobj->gmt == 1) {
 	return rb_str_new2("UTC");
     }
-#if defined(HAVE_TM_ZONE)
+
     return rb_str_new2(tobj->tm.tm_zone);
-#elif defined(HAVE_TZNAME) && defined(HAVE_DAYLIGHT)
-    return rb_str_new2(tzname[daylight && tobj->tm.tm_isdst]);
-#else
-    len = rb_strftime(buf, sizeof(buf), "%Z",
-		      &tobj->tm, &tobj->ts, tobj->gmt);
-    return rb_str_new(buf, len);
-#endif
 }
 
 /*
@@ -2016,31 +2041,7 @@ time_utc_offset(VALUE time)
 	return INT2FIX(0);
     }
     else {
-#if defined(HAVE_STRUCT_TM_TM_GMTOFF)
 	return INT2NUM(tobj->tm.tm_gmtoff);
-#else
-	struct pg_tm *u, *l;
-	time_t t;
-	long off;
-	struct pg_tm result;
-	l = &tobj->tm;
-	t = tobj->ts.tv_sec;
-	u = GMTIME(&t, result);
-	if (!u)
-	    rb_raise(rb_eArgError, "gmtime error");
-	if (l->tm_year != u->tm_year)
-	    off = l->tm_year < u->tm_year ? -1 : 1;
-	else if (l->tm_mon != u->tm_mon)
-	    off = l->tm_mon < u->tm_mon ? -1 : 1;
-	else if (l->tm_mday != u->tm_mday)
-	    off = l->tm_mday < u->tm_mday ? -1 : 1;
-	else
-	    off = 0;
-	off = off * 24 + l->tm_hour - u->tm_hour;
-	off = off * 60 + l->tm_min - u->tm_min;
-	off = off * 60 + l->tm_sec - u->tm_sec;
-	return LONG2FIX(off);
-#endif
     }
 }
 
@@ -2094,12 +2095,12 @@ rb_strftime_alloc(char **buf, const char *format,
 	return 0;
     }
     errno = 0;
-    len = rb_strftime(*buf, SMALLBUF, format, time, ts, gmt);
+    RB_STRFTIME(*buf, SMALLBUF, format, time, ts, gmt, len);
     if (len != 0 || (**buf == '\0' && errno != ERANGE)) return len;
     for (size=1024; ; size*=2) {
 	*buf = xmalloc(size);
 	(*buf)[0] = '\0';
-	len = rb_strftime(*buf, size, format, time, ts, gmt);
+	RB_STRFTIME(*buf, size, format, time, ts, gmt, len);
 	/*
 	 * buflen can be zero EITHER because there's not enough
 	 * room in the string, or because the control command
@@ -2404,7 +2405,7 @@ time_load(VALUE klass, VALUE str)
 {
     VALUE time = time_s_alloc(klass);
 
-    time_mload(time, str);
+    time_mload(time, str);//TODO:set tz
     return time;
 }
 
@@ -2514,6 +2515,24 @@ timezone_offset(VALUE timezone)
     return LONG2FIX(offset);
 }
 
+static VALUE 
+timezone_inspect(VALUE timezone)
+{
+    VALUE str = rb_str_buf_new2("#<");
+    struct pg_tz* tz;
+    const char *tz_name;
+    
+    GetTZval(timezone, tz);
+    tz_name = pg_get_timezone_name(tz);
+    
+    rb_str_buf_cat2(str, rb_obj_classname(timezone));
+    rb_str_buf_cat2(str, ":");
+    rb_str_buf_cat2(str, tz_name ? tz_name : "nil");
+    rb_str_buf_cat2(str, ">");
+    
+    return str;
+}
+
 /*
  *  <code>Time</code> is an abstraction of dates and times. Time is
  *  stored internally as the number of seconds and nanoseconds since
@@ -2621,14 +2640,15 @@ Init_time2(void)
     rb_cTimeZone = rb_define_class_under(rb_cTime, "Zone", rb_cObject);
     
     //rb_define_const(rb_cTimeZone, "UTC", timezone_get(rb_cTimeZone, rb_str_new));
-    //rb_define_virtual_variable()
     
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
     rb_define_singleton_method(rb_cTimeZone, "default", timezone_default_get, 0);
     rb_define_singleton_method(rb_cTimeZone, "default=", timezone_default_set, 1);
     
     rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
+    rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "offset", timezone_offset, 0);
+    rb_define_method(rb_cTimeZone, "inspect", timezone_inspect, 0);
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
     rb_define_method(rb_cTime, "marshal_dump", time_mdump, 0);
