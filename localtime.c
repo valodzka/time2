@@ -1422,31 +1422,6 @@ pg_next_dst_boundary(const pg_time_t *timep,
 }
 
 /*
- * If the given timezone uses only one GMT offset, store that offset
- * into *gmtoff and return TRUE, else return FALSE.
- */
-bool
-pg_get_timezone_offset(const pg_tz *tz, long int *gmtoff)
-{
-	/*
-	 * The zone could have more than one ttinfo, if it's historically used
-	 * more than one abbreviation.	We return TRUE as long as they all have
-	 * the same gmtoff.
-	 */
-	const struct state *sp;
-	int			i;
-
-	sp = &tz->state;
-	for (i = 1; i < sp->typecnt; i++)
-	{
-		if (sp->ttis[i].tt_gmtoff != sp->ttis[0].tt_gmtoff)
-			return false;
-	}
-	*gmtoff = sp->ttis[0].tt_gmtoff;
-	return true;
-}
-
-/*
  * Return the name of the current timezone
  */
 const char *
@@ -1740,10 +1715,10 @@ const pg_tz *tz)
 }
 
 static pg_time_t
-pg_time1(struct pg_tm * const	tmp, 
+pg_time1(struct pg_tm * const	tmp,
 struct pg_tm * (* const	funcp)(const pg_time_t *, long, struct pg_tm *, struct pg_tz const *),
 const long		offset,
-const pg_tz *tz)
+const pg_tz const * tz)
 {
 	register time_t			t;
 	register const struct state *	sp;
@@ -1808,7 +1783,7 @@ const pg_tz *tz)
 		return -1;
 }
 
-pg_time_t pg_mktime(struct pg_tm const *tmp, struct pg_tz const * tz)
+pg_time_t pg_mktime(struct pg_tm *tmp, struct pg_tz const * tz)
 {
 	return pg_time1(tmp, localsub, 0L, tz);
 }

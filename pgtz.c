@@ -13,6 +13,7 @@
 #define NO_REDEFINE_TIMEFUNCS
 
 #include "postgres.h"
+#include <ruby/ruby.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -191,10 +192,8 @@ scan_directory_ci(const char *dirname, const char *fname, int fnamelen,
 	dirdesc = opendir(dirname);
 	if (!dirdesc)
 	{
-		ereport(LOG,
-				(errcode_for_file_access(),
-				 errmsg("could not open directory \"%s\": %m", dirname)));
-		return false;
+            rb_warn("could not open directory \"%s\": %d", dirname, errno);
+            return false;
 	}
 
 	while ((direntry = readdir(dirdesc)) != NULL)
@@ -346,7 +345,6 @@ score_timezone(const char *tzname, struct tztry * tt)
 	/* Reject if leap seconds involved */
 	if (!tz_acceptable(&tz))
 	{
-		elog(DEBUG4, "Reject TZ \"%s\": uses leap seconds", tzname);
 		return -1;
 	}
 
@@ -360,23 +358,10 @@ score_timezone(const char *tzname, struct tztry * tt)
 		systm = localtime(&(tt->test_times[i]));
 		if (!systm)
 		{
-			elog(DEBUG4, "TZ \"%s\" scores %d: at %ld %04d-%02d-%02d %02d:%02d:%02d %s, system had no data",
-				 tzname, i, (long) pgtt,
-				 pgtm->tm_year + 1900, pgtm->tm_mon + 1, pgtm->tm_mday,
-				 pgtm->tm_hour, pgtm->tm_min, pgtm->tm_sec,
-				 pgtm->tm_isdst ? "dst" : "std");
 			return i;
 		}
 		if (!compare_tm(systm, pgtm))
 		{
-			elog(DEBUG4, "TZ \"%s\" scores %d: at %ld %04d-%02d-%02d %02d:%02d:%02d %s versus %04d-%02d-%02d %02d:%02d:%02d %s",
-				 tzname, i, (long) pgtt,
-				 pgtm->tm_year + 1900, pgtm->tm_mon + 1, pgtm->tm_mday,
-				 pgtm->tm_hour, pgtm->tm_min, pgtm->tm_sec,
-				 pgtm->tm_isdst ? "dst" : "std",
-				 systm->tm_year + 1900, systm->tm_mon + 1, systm->tm_mday,
-				 systm->tm_hour, systm->tm_min, systm->tm_sec,
-				 systm->tm_isdst ? "dst" : "std");
 			return i;
 		}
 		if (systm->tm_isdst >= 0)
@@ -388,15 +373,11 @@ score_timezone(const char *tzname, struct tztry * tt)
 			strftime(cbuf, sizeof(cbuf) - 1, "%Z", systm);		/* zone abbr */
 			if (strcmp(cbuf, pgtm->tm_zone) != 0)
 			{
-				elog(DEBUG4, "TZ \"%s\" scores %d: at %ld \"%s\" versus \"%s\"",
-					 tzname, i, (long) pgtt,
-					 pgtm->tm_zone, cbuf);
 				return i;
 			}
 		}
 	}
 
-	elog(DEBUG4, "TZ \"%s\" gets max score %d", tzname, i);
 	return i;
 }
 
@@ -544,9 +525,7 @@ identify_system_timezone(void)
 	/* We should have found a STD zone name by now... */
 	if (std_zone_name[0] == '\0')
 	{
-		ereport(LOG,
-				(errmsg("could not determine system time zone, defaulting to \"%s\"", "GMT"),
-		errhint("You can specify the correct timezone in postgresql.conf.")));
+		rb_warn("could not determine system time zone, defaulting to GMT");
 		return NULL;			/* go to GMT */
 	}
 
@@ -579,10 +558,8 @@ identify_system_timezone(void)
 	snprintf(resultbuf, sizeof(resultbuf), "Etc/GMT%s%d",
 			 (-std_ofs > 0) ? "+" : "", -std_ofs / 3600);
 
-	ereport(LOG,
-		 (errmsg("could not recognize system timezone, defaulting to \"%s\"",
-				 resultbuf),
-	   errhint("You can specify the correct timezone in postgresql.conf.")));
+        rb_warn("could not recognize system timezone, defaulting to \"%s\"",
+                                    resultbuf);
 	return resultbuf;
 }
 
@@ -616,10 +593,8 @@ scan_available_timezones(char *tzdir, char *tzdirsub, struct tztry * tt,
 	dirdesc = opendir(tzdir);
 	if (!dirdesc)
 	{
-		ereport(LOG,
-				(errcode_for_file_access(),
-				 errmsg("could not open directory \"%s\": %m", tzdir)));
-		return;
+            rb_warn("could not open directory \"%s\": %d", tzdir, errno);
+            return;
 	}
 
 	while ((direntry = readdir(dirdesc)) != NULL)
@@ -635,9 +610,7 @@ scan_available_timezones(char *tzdir, char *tzdirsub, struct tztry * tt,
 
 		if (stat(tzdir, &statbuf) != 0)
 		{
-			ereport(LOG,
-					(errcode_for_file_access(),
-					 errmsg("could not stat \"%s\": %m", tzdir)));
+			rb_warn("could not stat \"%s\": %d", tzdir, errno);
 			tzdir[tzdir_orig_len] = '\0';
 			continue;
 		}
@@ -1365,9 +1338,8 @@ select_default_timezone(void)
 	if (def_tz)
 		return def_tz;
 
-	ereport(FATAL,
-			(errmsg("could not select a suitable default timezone"),
-			 errdetail("It appears that your GMT time zone uses leap seconds. PostgreSQL does not support leap seconds.")));
+	rb_fatal("could not select a suitable default timezone "
+                "(it appears that your GMT time zone uses leap seconds)");
 	return NULL;				/* keep compiler quiet */
 }
 
@@ -1396,21 +1368,21 @@ pg_tzenum *
 pg_tzenumerate_start(void)
 {
 	pg_tzenum  *ret = (pg_tzenum *) malloc(sizeof(pg_tzenum));
-	char	   *startdir = 0, *tzdir = pg_TZDIR();
+	char	   *startdir = 0;
+        char const *tzdir = pg_TZDIR();
 
 	startdir = malloc((strlen(tzdir)+1)*sizeof(char));
 	strcpy(startdir,tzdir);
         
-    memset(ret, 0, sizeof(pg_tzenum));
+        memset(ret, 0, sizeof(pg_tzenum));
 
 	ret->baselen = strlen(startdir) + 1;
 	ret->depth = 0;
 	ret->dirname[0] = startdir;
 	ret->dirdesc[0] = opendir(startdir);
 	if (!ret->dirdesc[0])
-		ereport(ERROR,
-				(errcode_for_file_access(),
-				 errmsg("could not open directory \"%s\": %m", startdir)));
+            RB_ERRNO_RAISE("opendir: could not open directory \"%s\"", startdir);
+
 	return ret;
 }
 
@@ -1453,25 +1425,20 @@ pg_tzenumerate_next(pg_tzenum *dir)
 		snprintf(fullname, MAXPGPATH, "%s/%s",
 				 dir->dirname[dir->depth], direntry->d_name);
 		if (stat(fullname, &statbuf) != 0)
-			ereport(ERROR,
-					(errcode_for_file_access(),
-					 errmsg("could not stat \"%s\": %m", fullname)));
+			RB_ERRNO_RAISE("could not stat \"%s\"", fullname);
 
 		if (S_ISDIR(statbuf.st_mode))
 		{
 			/* Step into the subdirectory */
 			if (dir->depth >= MAX_TZDIR_DEPTH - 1)
-				ereport(ERROR,
-						(errmsg("timezone directory stack overflow")));
+                            RB_ERRNO_RAISE("timezone directory stack overflow, level %d", dir->depth);
 			dir->depth++;
 			dir->dirname[dir->depth] = malloc((strlen(fullname)+1)*sizeof(char));
 			strcpy(dir->dirname[dir->depth], fullname);
 			dir->dirdesc[dir->depth] = opendir(fullname);
 			if (!dir->dirdesc[dir->depth])
-				ereport(ERROR,
-						(errcode_for_file_access(),
-						 errmsg("could not open directory \"%s\": %m",
-								fullname)));
+                                    RB_ERRNO_RAISE("opendir: could not open directory \"%s\"",
+                                                                    fullname);
 
 			/* Start over reading in the new directory */
 			continue;

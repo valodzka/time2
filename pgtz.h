@@ -70,23 +70,7 @@ extern int	tzload(const char *name, char *canonname, struct state * sp,
 				   int doextend);
 extern int	tzparse(const char *name, struct state * sp, int lastditch);
 
-/*
-#define ereport_domain(elevel, domain, rest)	\
-	(errstart(elevel, __FILE__, __LINE__, PG_FUNCNAME_MACRO, domain) ? \
-	 (errfinish rest) : (void) 0)
-
-#define ereport(level, rest)	\
-	ereport_domain(level, TEXTDOMAIN, rest) */
-#undef ereport
-#define ereport(level, rest) (0)
-
-//#define elog	elog_start(__FILE__, __LINE__, PG_FUNCNAME_MACRO), elog_finish
-//extern void
-//elog_finish(int elevel, const char *fmt,...)
-//elog(DEBUG4, "Reject TZ \"%s\": uses leap seconds", tzname);
-#undef elog
-#define elog
-#define DEBUG4 (0)
+#define RB_ERRNO_RAISE(msg, det) rb_raise(rb_eRuntimeError, msg ": %d", det, errno)
 
 #ifdef WIN32
 #  define SYSTEMTZDIR "C:\\Program Files\\PostgreSQL\\8.3\\share\\timezone\\"

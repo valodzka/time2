@@ -2514,19 +2514,6 @@ timezone_name(VALUE timezone)
     return tz_name ? rb_str_new_cstr(tz_name) : Qnil;
 }
 
-//TODO:WTF it return?
-static VALUE 
-timezone_offset(VALUE timezone) 
-{
-    struct pg_tz* tz;
-    long int offset;
-    
-    GetTZval(timezone, tz);
-    pg_get_timezone_offset(tz, &offset);
-
-    return LONG2FIX(offset);
-}
-
 static VALUE 
 timezone_inspect(VALUE timezone)
 {
@@ -2659,7 +2646,6 @@ Init_time2(void)
     
     rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
-    rb_define_method(rb_cTimeZone, "offset", timezone_offset, 0);
     rb_define_method(rb_cTimeZone, "inspect", timezone_inspect, 0);
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
