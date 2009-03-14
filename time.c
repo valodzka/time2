@@ -38,7 +38,7 @@ VALUE rb_cTime;
 VALUE rb_cTimeZone;
 
 static VALUE time_utc_offset _((VALUE));
-static struct pg_tz* timezone_default();
+static struct pg_tz* timezone_default(struct pg_tz *dflt);
 static struct pg_tz* timezone_utc();
 static struct pg_tz* timezone_cached_get(const char *name);
 
@@ -202,7 +202,7 @@ rb_time_with_tz_new(pg_time_t sec, long usec, struct pg_tz const * tz)
 VALUE
 rb_time_new(pg_time_t sec, long usec)
 {
-    return time_new_internal(rb_cTime, sec, usec * 1000, timezone_default());
+    return time_new_internal(rb_cTime, sec, usec * 1000, timezone_default(NULL));
 }
 
 VALUE
@@ -214,7 +214,7 @@ rb_time_with_tz_nano_new(pg_time_t sec, long nsec, struct pg_tz const * tz)
 VALUE
 rb_time_nano_new(pg_time_t sec, long nsec)
 {
-    return time_new_internal(rb_cTime, sec, nsec, timezone_default());
+    return time_new_internal(rb_cTime, sec, nsec, timezone_default(NULL));
 }
 
 static struct timespec
@@ -368,7 +368,7 @@ time_s_at(int argc, VALUE *argv, VALUE klass)
     else {
 	ts = rb_time_timespec(time);
     }
-    t = time_new_internal(klass, ts.tv_sec, ts.tv_nsec, timezone_default());
+    t = time_new_internal(klass, ts.tv_sec, ts.tv_nsec, timezone_default(NULL));
     if (TYPE(time) == T_DATA && RDATA(time)->dfree == time_free) {
 	struct time_object *tobj, *tobj2;
 
@@ -2239,7 +2239,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
         utc_p = 1;
     }
     else {//currently no timezone support
-        tz == timezone_default();
+        tz == timezone_default(NULL);
         utc_p = 0;
     }
 
@@ -2392,7 +2392,7 @@ time_mload(VALUE time, VALUE str)
 	tm.tm_yday = tm.tm_wday = 0;
 	tm.tm_isdst = 0;
 
-	sec = make_time_t(&tm, timezone_default(), Qtrue);//TODO:should be stored?
+	sec = make_time_t(&tm, timezone_default(NULL), Qtrue);//TODO:should be stored?
 	usec = (long)(s & 0xfffff);
         nsec = usec * 1000;
 
@@ -2482,16 +2482,16 @@ static struct pg_tz*
 timezone_default(struct pg_tz *dflt) 
 {
     //TODO:add to cache
-    static struct pg_tz* default_timezone = NULL;
+    static struct pg_tz* tz = NULL;
 
-    if (!default_timezone && !dflt) {
-        default_timezone = select_default_timezone();
+    if (!tz && !dflt) {
+        tz = select_default_timezone();
     }
     else if (dflt) {
-        default_timezone = dflt;
+        tz = dflt;
     }
 
-    return default_timezone;
+    return tz;
 }
 
 static VALUE

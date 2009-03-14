@@ -1,0 +1,124 @@
+h2. New Ruby Time implementation
+
+h3. Radical solution for problem with ruby Time class
+
+Ruby Time class is one of the most disappointment part of ruby standart library. It "can't handle time zones":http://michaelbuffington.com/2006/10/11/i-heap-scorn-upon-rubys-time-class/ by desing (but has methods which accept timezone as parameter) and this can't be changed by "third party libraries":http://tzinfo.rubyforge.org (except as through creation child class (as "Rails does":http://api.rubyonrails.org/classes/ActiveSupport/TimeWithZone.html)). It has pure ruby implementation of time parsing function, but it "awful slow":http://scie.nti.st/2007/11/28/ruby-vs-python-date-parsing-am-i-doing-something-wrong.
+
+Project attempts radically solve this problems. It updates core ruby Time class. Based on code from trunk, it, first of all, adds full platform independent time zones support, including full tz database, transition between time zones, dst, and secondary it add fast platform independent implementation of <code>strptime</code>. 
+
+Library will be distributed as a gem when it became production ready, but I hope this code will be included in ruby core.
+
+h3. Example
+Short <code>irb</code> session:
+$ruby -rtimetz -S irb
+<pre>
+>> Time::Zone.default
+=> #<Time::Zone:Europe/Minsk>
+>> Time.now
+=> 2009-03-14 23:27:08 +0200
+>> Time::Zone.default = "Japan"
+=> "Japan"
+>> Time.now
+=> 2009-03-15 06:27:26 +0900
+>> Time.now.zone
+=> "JST"
+
+>> t = Time.now
+=> 2009-03-15 06:27:44 +0900
+>> tz = Time::Zone["US/Pacific"]
+=> #<Time::Zone:US/Pacific>
+>> t.localtime(tz)
+=> 2009-03-14 14:27:44 -0700
+>> t.dst?
+=> true
+>> t.zone
+=> "PDT"
+>> tz.name
+=> "US/Pacific"
+
+>> t = Time.local(1, 1, 1, 1, 1, 2009, nil, nil, false, tz)
+=> 2009-01-01 01:01:01 -0800
+>> t.dst?
+=> false
+</pre>
+
+h3. Benchmarks
+
+Platform: ruby 1.9.2dev (2009-03-12 trunk 22918) [i686-linux]
+
+h4. Time zones conversion
+
+About 13 times faster then TZInfo, but can be event faster if use <code>local</code> instead of  <code>getlocal</code> which creates new object every time
+
+<pre>
+n = 100000
+tz1 = TZInfo::Timezone.get('US/Pacific')
+tz2 = Time::Zone['US/Pacific']
+
+Benchmark.bm{|r| 
+  r.report{ 
+    n.times{ tz1.utc_to_local(t) } 
+ }
+ r.report{ 
+    n.times{ t.getlocal(tz2) } 
+ } 
+} 
+
+#      user     system      total        real
+#  4.510000   0.000000   4.510000 (  4.631645)
+#  0.340000   0.010000   0.350000 (  0.362180)
+
+</pre>
+
+h4. strptime
+
+About 50 times faster then strptime from ruby standart library (we use <code>method#call</code> to avoid redefinition)
+
+<pre>
+fmt = "%Y-%m-%d %Z"
+str = "2007-10-10 GMT"
+
+m2 = Time.method(:strptime)
+require 'time'
+m1 = Time.method(:strptime)
+
+n = 10000
+Benchmark.bm{|b| 
+  b.report{ 
+    n.times{ m1.call(str, fmt) } 
+  }
+  b.report{ 
+    n.times{ m2.call(str, fmt) } 
+  } 
+}
+
+#      user     system      total        real
+#  7.420000   0.070000   7.490000 (  7.688315)
+#  0.150000   0.000000   0.150000 (  0.140982)
+
+</pre>
+
+h3. Portability
+
+Code tested on Debian Etch with GCC, should be also work on Windows with Visual C++ 2008 (may be with small modifications)
+
+h3. TODO
+
+* issue segfault with methods which uses internal Time API, i.e. some <code>File</code>, <code>Socket</code> and <code>Zlib</code> methods
+* <code>strptime</code> implemenation is very raw
+* code isn't clean enough, many old code should be removed
+* ugly english :)
+
+h3. Acknowledgements
+
+* "tz database":http://www.twinsun.com/tz/tz-link.htm for the exelent "time zones database and inial version of time functions":ftp://elsie.nci.nih.gov/pub
+* "postgresql":postgresql.org for initial multitimezone "code modification":http://git.postgresql.org/?p=postgresql.git;a=tree;f=src/timezone
+* "free BSD project":http://www.freebsd.org for "initial strptime implementation":http://www.freebsd.org.ua/cgi/cvsweb.cgi/src/lib/libc/stdtime/strptime.c?content-type=text/x-cvsweb-markup&cvsroot=freebsd
+
+h3. Licence
+
+Same terms as Ruby unless otherwise declared in concrete file
+
+
+
+
