@@ -16,10 +16,6 @@
 #include "pgtz.h"
 #include "tzfile.h"
 
-//#undef HAVE_INTTYPES_H
-//#undef HAVE_SYS_TIME_H
-//#undef HAVE_UNISTD_H
-
 #include "ruby/ruby.h"
 #include "ruby/st.h"
 #include <sys/types.h>
@@ -32,6 +28,7 @@
 #endif
 
 #include <math.h>
+#include <ruby-1.9.1/ruby/ruby.h>
 
 #ifndef TYPEOF_TIMEVAL_TV_SEC
 # define TYPEOF_TIMEVAL_TV_SEC time_t
@@ -2549,12 +2546,15 @@ timezone_inspect(VALUE timezone)
  *  this fact when comparing times with each other---times that are
  *  apparently equal when displayed may be different when compared.
  */
+char * rb_tzdir = NULL;
 
 void
 Init_time2(void)
 {
 #undef rb_intern
 #define rb_intern(str) rb_intern_const(str)
+    VALUE tz_dir = rb_gv_get("$__tz_directory");
+    rb_tzdir = StringValueCStr(tz_dir);
 
     id_divmod = rb_intern("divmod");
     id_mul = rb_intern("*");
@@ -2647,6 +2647,7 @@ Init_time2(void)
     rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "inspect", timezone_inspect, 0);
+
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
     rb_define_method(rb_cTime, "marshal_dump", time_mdump, 0);

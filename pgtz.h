@@ -72,11 +72,7 @@ extern int	tzparse(const char *name, struct state * sp, int lastditch);
 
 #define RB_ERRNO_RAISE(msg, det) rb_raise(rb_eRuntimeError, msg ": %d", det, errno)
 
-#ifdef WIN32
-#  define SYSTEMTZDIR "C:\\Program Files\\PostgreSQL\\8.3\\share\\timezone\\"
-#else
-#  define SYSTEMTZDIR "/usr/share/zoneinfo/"
-#endif
+extern char * rb_tzdir;
 
 /* Julian-date equivalents of Day 0 in Unix and Postgres reckoning */
 #define UNIX_EPOCH_JDATE		2440588 /* == date2j(1970, 1, 1) */

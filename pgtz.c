@@ -93,27 +93,8 @@ static pg_tz *get_pg_tz_for_zone(const char *tzname);
 static const char *
 pg_TZDIR(void)
 {
-#ifndef SYSTEMTZDIR
-	/* normal case: timezone stuff is under our share dir */
-	static bool done_tzdir = false;
-	static char tzdir[MAXPGPATH];
-        int tzdirlen = 0;
 
-	if (done_tzdir)
-		return tzdir;
-
-	get_share_path(my_exec_path, tzdir);
-
-        tzdirlen = strlen(tzdir);
-	strncpy(tzdir + tzdirlen, "/timezone", MAXPGPATH - tzdirlen);
-        tzdir[MAXPGPATH-1] = '\0';
-
-	done_tzdir = true;
-	return tzdir;
-#else
-	/* we're configured to use system's timezone database */
-	return SYSTEMTZDIR;
-#endif
+    return rb_tzdir;
 }
 
 
