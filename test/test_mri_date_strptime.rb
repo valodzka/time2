@@ -439,19 +439,19 @@ class TestDateStrptime < Test::Unit::TestCase
 #     assert_equal([2004, 11, 1, 0, 0, 0],
 # 		 [d.cwyear, d.cweek, d.cwday, d.hour, d.min, d.sec])
 
-#      d = Time.strptime('11-6', '%U-%w')
-#      assert_equal([n.year, 11, 6, 0, 0, 0],
-#                   [d.year, d.strftime('%U').to_i, d.wday, d.hour, d.min, d.sec])
-#      d = Time.strptime('2004-11', '%Y-%U')
-#      assert_equal([2004, 11, 0, 0, 0, 0],
-#                   [d.year, d.strftime('%U').to_i, d.wday, d.hour, d.min, d.sec])
+     d = Time.strptime('11-6', '%U-%w')
+     assert_equal([n.year, 11, 6, 0, 0, 0],
+                  [d.year, d.strftime('%U').to_i, d.wday, d.hour, d.min, d.sec])
+     d = Time.strptime('2004-11', '%Y-%U')
+     assert_equal([2004, 11, 0, 0, 0, 0],
+                  [d.year, d.strftime('%U').to_i, d.wday, d.hour, d.min, d.sec])
 
-#      d = Time.strptime('11-6', '%W-%w')
-#      assert_equal([n.year, 11, 6, 0, 0, 0],
-#                   [d.year, d.strftime('%W').to_i, d.wday, d.hour, d.min, d.sec])
-#      d = Time.strptime('2004-11', '%Y-%W')
-#      assert_equal([2004, 11, 0, 0, 0, 0],
-#                   [d.year, d.strftime('%W').to_i, d.wday, d.hour, d.min, d.sec])
+     d = Time.strptime('11-6', '%W-%w')
+     assert_equal([n.year, 11, 6, 0, 0, 0],
+                  [d.year, d.strftime('%W').to_i, d.wday, d.hour, d.min, d.sec])
+     d = Time.strptime('2004-11', '%Y-%W')
+     assert_equal([2004, 11, 0, 0, 0, 0],
+                  [d.year, d.strftime('%W').to_i, d.wday, d.hour, d.min, d.sec])
   end
 =begin
   def test_strptime__d_to_s

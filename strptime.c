@@ -60,11 +60,41 @@
 #include "tzfile.h"
 
 //#define TZ_STRLEN_MAX 255
+static const struct pg_time_locale {
+  const char *wday[7];
+  const char *weekday[7];
+  const char *mon[12];
+  const char *month[12];
+  const char *date_fmt;
+  const char *X_fmt; /* The time, using the locale's format. */
+  const char *x_fmt; /* The date, using the locale's date format. */
+  const char *c_fmt; /* Date and time, using the locale's format. */
+  const char *ampm_fmt; /* 12-hour clock time using the AM/PM notation; 
+						   in the default locale, this shall be equivalent to %I:%M:%S %p */
+  /* TODO: add PM AM localisation */
+} pgDefaultTimeLocale = {
+  {
+	"Sun","Mon","Tue","Wed","Thu","Fri","Sat",
+  },
+  {
+	"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
+	"Friday", "Saturday"
+  },
+  {
+	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  },
+  {
+	"January", "February", "March", "April", "May", "June", "July",
+	"August", "September", "October", "November", "December"
+  },
+  "%a %b %e %H:%M:%S %Z %Y",
+  "%H:%M:%S",
+  "%m/%d/%y",
+  "%a %b %e %H:%M:%S %Y",
+  "%I:%M:%S %p"
+};
 
-const char* WEEKDAY[] = {"sunday",  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"};
-const char* WDAY[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
-const char* MONTH[] = { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december" };
-const char* MON[] = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
 
 #define asizeof(a)	(sizeof (a) / sizeof ((a)[0]))
 #define strncasecmp(s1, s2, n) (st_strncasecmp(s1, s2, n))
@@ -76,6 +106,7 @@ _pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, struct pg_tz co
 	const char *ptr;
 	int	i, len;
 	int Ealternative, Oalternative;
+	struct pg_time_locale const *loc = &pgDefaultTimeLocale;
 
 	ptr = fmt;
 	while (*ptr != 0) {
@@ -105,7 +136,7 @@ label:
 			break;
 
 		case '+':
-			buf = _pg_strptime(buf, "%a %b %e %H:%M:%S %Z %Y", tm, tz);
+			buf = _pg_strptime(buf, loc->date_fmt, tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
@@ -127,9 +158,8 @@ label:
 			tm->tm_year = i * 100 - 1900;
 			break;
 
-		case 'c':
-			//buf = _pg_strptime(buf, tptr->c_fmt, tm, GMTp);
-			buf = _pg_strptime(buf, "%a %b %e %H:%M:%S %Y", tm, tz);			
+		case 'c': /* Date and time, using the locale's format. */
+			buf = _pg_strptime(buf, loc->c_fmt, tm, tz);			
 			if (buf == 0)
 				return 0;
 			break;
@@ -164,9 +194,9 @@ label:
 				return 0;
 			break;
 
-		case 'r':
-			//buf = _pg_strptime(buf, tptr->ampm_fmt, tm, GMTp);			
-			buf = _pg_strptime(buf, "%I:%M:%S %p", tm, tz);
+		case 'r': /* 12-hour clock time using the AM/PM notation; 
+					 in the default locale, this shall be equivalent to %I:%M:%S %p */
+  		    buf = _pg_strptime(buf, loc->ampm_fmt, tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
@@ -177,16 +207,14 @@ label:
 				return 0;
 			break;
 
-		case 'X':
-			//buf = _pg_strptime(buf, tptr->X_fmt, tm, GMTp);
-			buf = _pg_strptime(buf, "%H:%M:%S", tm, tz);
+		case 'X': /* The time, using the locale's format */
+			buf = _pg_strptime(buf, loc->X_fmt, tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
-		case 'x':
-			//buf = _pg_strptime(buf, tptr->x_fmt, tm, GMTp);
-			buf = _pg_strptime(buf, "%m/%d/%y", tm, tz);			
+		case 'x': /* The date, using the locale's date format */
+			buf = _pg_strptime(buf, loc->x_fmt, tm, tz);			
 			if (buf == 0)
 				return 0;
 			break;
@@ -318,17 +346,17 @@ label:
 
 		case 'A':
 		case 'a':
-			for (i = 0; i < asizeof(WEEKDAY); i++) {
-				len = strlen(WEEKDAY[i]);
-				if (strncasecmp(buf, WEEKDAY[i],
+			for (i = 0; i < asizeof(loc->weekday); i++) {
+				len = strlen(loc->weekday[i]);
+				if (strncasecmp(buf, loc->weekday[i],
 						len) == 0)
 					break;
-				len = strlen(WDAY[i]);
-				if (strncasecmp(buf, WDAY[i],
+				len = strlen(loc->wday[i]);
+				if (strncasecmp(buf, loc->wday[i],
 						len) == 0)
 					break;
 			}
-			if (i == asizeof(WEEKDAY))
+			if (i == asizeof(loc->weekday))
 				return 0;
 
 			tm->tm_wday = i;
@@ -407,27 +435,27 @@ label:
 		case 'B':
 		case 'b':
 		case 'h':
-			for (i = 0; i < asizeof(MONTH); i++) {
+			for (i = 0; i < asizeof(loc->month); i++) {
 				if (Oalternative) {
 					if (c == 'B') {
-						len = strlen(MONTH[i]);
+						len = strlen(loc->month[i]);
 						if (strncasecmp(buf,
-								MONTH[i],
+								loc->month[i],
 								len) == 0)
 							break;
 					}
 				} else {
-					len = strlen(MONTH[i]);
-					if (strncasecmp(buf, MONTH[i],
+					len = strlen(loc->month[i]);
+					if (strncasecmp(buf, loc->month[i],
 							len) == 0)
 						break;
-					len = strlen(MON[i]);
-					if (strncasecmp(buf, MON[i],
+					len = strlen(loc->mon[i]);
+					if (strncasecmp(buf, loc->mon[i],
 							len) == 0)
 						break;
 				}
 			}
-			if (i == asizeof(MONTH))
+			if (i == asizeof(loc->month))
 				return 0;
 
 			tm->tm_mon = i;
