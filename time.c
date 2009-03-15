@@ -128,7 +128,7 @@ time_init(VALUE time)
     tobj->tz = timezone_default(NULL);
 #ifdef HAVE_CLOCK_GETTIME
     if (clock_gettime(CLOCK_REALTIME, &tobj->ts) == -1) {
-	rb_sys_fail("clock_gettime");
+		rb_sys_fail("clock_gettime");
     }
 #else
     {

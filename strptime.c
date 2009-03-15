@@ -478,10 +478,9 @@ label:
 				r = (long)t;
 			}
 			else {
-				int d = n < 0 ? -1000 : 1000;
-				t = n / d;
-				ms = n % d;
-				r = ((long)t) * 1000L + ms;
+				t = n / 1000;
+				ms = n % 1000;
+				r = ((long)t) * 1000 + ms;
 			}
 
 			if (errno == ERANGE || r != n) {

@@ -369,19 +369,20 @@ class TestDateStrptime < Test::Unit::TestCase
   def test_strptime__minus
     with_tz "UTC" do
       d = Time.strptime('-1', '%s')
-      assert_equal([1969, 12, 31, 23, 59, 59],
-                 [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
+      assert_equal([1969, 12, 31, 23, 59, 59, 0],
+                 [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.nsec])
       d = Time.strptime('-86400', '%s')
       assert_equal([1969, 12, 31, 0, 0, 0],
                  [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
-    end
 
-    d = Time.strptime('-999', '%Q')
-    assert_equal([1969, 12, 31, 23, 59, 59, 1.to_r/10**3],
-                  [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.sec_fraction])
-    d = Time.strptime('-1000', '%Q')
-    assert_equal([1969, 12, 31, 23, 59, 59, 0],
-                 [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.sec_fraction])
+
+      d = Time.strptime('-999', '%Q')
+      assert_equal([1969, 12, 31, 23, 59, 59, 1000000],
+                   [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.nsec])
+      d = Time.strptime('-1000', '%Q')
+      assert_equal([1969, 12, 31, 23, 59, 59, 0],
+                   [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.nsec])
+    end
   end
 
   def test_strptime__comp
