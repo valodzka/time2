@@ -52,7 +52,7 @@ Platform: ruby 1.9.2dev (2009-03-12 trunk 22918) [i686-linux]
 
 h4. Time zones conversion
 
-About 13 times faster then TZInfo, but can be event faster if use <code>local</code> instead of  <code>getlocal</code> which creates new object every time
+About 13 times faster than TZInfo, but can be event faster if use <code>local</code> instead of  <code>getlocal</code> which creates new object every time
 
 <pre>
 
@@ -77,7 +77,7 @@ Benchmark.bm{|r|
 
 h4. strptime
 
-About 50 times faster then <code>strptime</code> from ruby standard library (we use <code>Method#call</code> to avoid redefinition)
+About 50 times faster than <code>strptime</code> from ruby standard library (we use <code>Method#call</code> to avoid redefinition)
 
 <pre>
 
@@ -106,12 +106,12 @@ Benchmark.bm{|b|
 
 h3. Portability
 
-Code tested on Debian Etch with GCC, should be also work on Windows with Visual C++ 2008 (may be with small modifications)
+Code tested on Debian Lenny with GCC, should also work on Windows with Visual C++ 2008 (small modifications might be required)
 
 h3. TODO
 
-* issue segfault with methods which uses internal Time API, i.e. some <code>File</code>, <code>Socket</code> and <code>Zlib</code> methods
-* <code>strptime</code> implementation is very raw
+* currently issue segfault with methods which uses internal Time API, i.e. some <code>File</code>, <code>Socket</code> and <code>Zlib</code> methods
+* <code>strptime</code> implementation doesn't support %Q, %N and some other ruby specific flags
 * code isn't clean enough, many old code should be removed
 * tests, tests, tests,
 * ugly english :)
@@ -122,9 +122,9 @@ h3. Acknowledgements
 * "postgresql":postgresql.org for initial multitimezone "code modification":http://git.postgresql.org/?p=postgresql.git;a=tree;f=src/timezone
 * "free BSD project":http://www.freebsd.org for "initial strptime implementation":http://www.freebsd.org.ua/cgi/cvsweb.cgi/src/lib/libc/stdtime/strptime.c?content-type=text/x-cvsweb-markup&cvsroot=freebsd
 
-h3. Licence
+h3. License
 
-Same terms as Ruby unless otherwise declared in concrete file
+Same terms as Ruby unless otherwise declared in specific file
 
 
 

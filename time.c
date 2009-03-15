@@ -28,7 +28,6 @@
 #endif
 
 #include <math.h>
-#include <ruby-1.9.1/ruby/ruby.h>
 
 #ifndef TYPEOF_TIMEVAL_TV_SEC
 # define TYPEOF_TIMEVAL_TV_SEC time_t
@@ -2296,7 +2295,6 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
     tm.tm_isdst = -1;
 
     p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, timezone_default(NULL));
-    //printf("IM:Y:%d - Yd:%d - M:%d - Md:%d\n", tm.tm_year, tm.tm_yday, tm.tm_mon, tm.tm_mday);
 
     if (!p) rb_raise(rb_eArgError, "strptime error");
     
