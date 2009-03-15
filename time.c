@@ -2224,16 +2224,75 @@ time_strftime(VALUE time, VALUE format)
     return str;
 }
 
+static void
+time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
+{
+    pg_time_t now = time(NULL);
+    struct pg_tm tm_now;
+
+    pg_localtime_r(&now, tz, &tm_now);//TODO: do it more efficient, not call immediately
+
+	if (tm->tm_yday != INT_MIN) {
+	  if (tm->tm_mday != INT_MIN || tm->tm_mon != INT_MIN) {
+		//TODO: add to documentation
+		//rb_warn("Year day redefines month and month day");
+	  }
+	  // mktime will detect appropriate month and day 
+	  tm->tm_mday = tm->tm_yday + 1;
+	  tm->tm_mon = 0;
+	}
+
+    if (tm->tm_year == INT_MIN) {
+	  tm->tm_year = tm_now.tm_year;
+	  if (tm->tm_mon == INT_MIN) {
+		tm->tm_mon = tm_now.tm_mon;
+		if(tm->tm_mday == INT_MIN) {
+		  tm->tm_mday = tm_now.tm_mday;
+		}
+	  }
+	  else {
+		if(tm->tm_mday == INT_MIN) {
+		  tm->tm_mday = 1;
+		}
+	  }
+    }
+	else {
+	  if (tm->tm_mon == INT_MIN) {
+		tm->tm_mon = 0;
+		if(tm->tm_mday == INT_MIN) {
+		  tm->tm_mday = 1;
+		}
+	  }
+	  else {
+		if(tm->tm_mday == INT_MIN) {
+		  tm->tm_mday = 1;
+		}
+	  }
+	}
+
+}
+
 static VALUE
 time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementation
 {
     struct pg_tm tm;
     struct pg_tz *tz;
-    VALUE time;
+    VALUE time_obj;
     int utc_p;
+    const char *p;
 
-    memset(&tm, 0, sizeof(tm));
-    pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm);
+    MEMZERO(&tm, struct pg_tm, 1);
+    tm.tm_year = INT_MIN;
+    tm.tm_mon = INT_MIN;
+    tm.tm_mday = INT_MIN;
+	tm.tm_yday = INT_MIN;
+    tm.tm_isdst = -1;
+
+    p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm);
+    //printf("IM:Y:%d - Yd:%d - M:%d - Md:%d\n", tm.tm_year, tm.tm_yday, tm.tm_mon, tm.tm_mday);
+
+    if (!p) rb_raise(rb_eArgError, "strptime error");
+    
     if(tm.tm_zone && strcmp("GMT", tm.tm_zone) == 0) {
         tz = timezone_utc();
         utc_p = 1;
@@ -2243,9 +2302,11 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
         utc_p = 0;
     }
 
-    time = time_new_internal(klass, make_time_t(&tm, tz, utc_p), 0, tz);
-    if (utc_p) return time_gmtime(time);
-    return time_localtime_with_tz(time, tz);
+    time_fill_invalid_tm(&tm, tz);
+
+    time_obj = time_new_internal(klass, make_time_t(&tm, tz, utc_p), 0, tz);
+
+    return utc_p ? time_gmtime(time_obj) : time_localtime_with_tz(time_obj, tz);
 }
 
 /*

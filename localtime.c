@@ -1721,12 +1721,12 @@ pg_time1(
     const long		offset,
     struct pg_tz const * tz)
 {
-	register time_t			t;
-	register const struct state *	sp;
-	register int			samei, otheri;
-	register int			sameind, otherind;
-	register int			i;
-	register int			nseen;
+	pg_time_t			t;
+	const struct state *	sp;
+	int			samei, otheri;
+	int			sameind, otherind;
+	int			i;
+	int			nseen;
 	int				seen[TZ_MAX_TYPES];
 	int				types[TZ_MAX_TYPES];
 	int				okay;
@@ -1786,5 +1786,5 @@ pg_time1(
 
 pg_time_t pg_mktime(struct pg_tm *tmp, struct pg_tz const * tz)
 {
-	return pg_time1(tmp, localsub, 0L, tz);
+    return pg_time1(tmp, localsub, 0L, tz);
 }

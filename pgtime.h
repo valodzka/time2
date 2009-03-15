@@ -57,7 +57,7 @@ extern int pg_next_dst_boundary(const pg_time_t *timep,
 extern size_t pg_strftime(char *s, size_t max, const char *format,
 			const struct pg_tm * tm);
 
-extern char * pg_strptime(const char * buf, const char * fmt,
+extern const char * pg_strptime(const char * buf, const char * fmt,
 			struct pg_tm * tm);
 
 extern pg_tz *pg_tzset(const char *tzname);

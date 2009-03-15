@@ -69,12 +69,10 @@ const char* WDAY[] = { "sun", "mon", "tue", "wed", "thu", "fri", "sat" };
 const char* MONTH[] = { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december" };
 const char* MON[] = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
 
-static char * _pg_strptime(const char *, const char *, struct pg_tm *, int *);
-
 #define asizeof(a)	(sizeof (a) / sizeof ((a)[0]))
 #define strncasecmp(s1, s2, n) (st_strncasecmp(s1, s2, n))
 
-static char *
+static const char *
 _pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, int *GMTp)
 {
 	char	c;
@@ -540,11 +538,9 @@ label:
 }
 
 
-char *
+const char *
 pg_strptime(const char * buf, const char * fmt,  struct pg_tm * tm)
 {
-	char *ret;
 	int gmt = 0;
-
 	return  _pg_strptime(buf, fmt, tm, &gmt);
 }
