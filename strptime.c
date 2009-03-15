@@ -70,7 +70,7 @@ const char* MON[] = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "s
 #define strncasecmp(s1, s2, n) (st_strncasecmp(s1, s2, n))
 
 static const char *
-_pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, int *GMTp)
+_pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, struct pg_tz const *tz)
 {
 	char	c;
 	const char *ptr;
@@ -105,7 +105,7 @@ label:
 			break;
 
 		case '+':
-			buf = _pg_strptime(buf, "%a %b %e %H:%M:%S %Z %Y", tm, GMTp);
+			buf = _pg_strptime(buf, "%a %b %e %H:%M:%S %Z %Y", tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
@@ -129,13 +129,13 @@ label:
 
 		case 'c':
 			//buf = _pg_strptime(buf, tptr->c_fmt, tm, GMTp);
-			buf = _pg_strptime(buf, "%a %b %e %H:%M:%S %Y", tm, GMTp);			
+			buf = _pg_strptime(buf, "%a %b %e %H:%M:%S %Y", tm, tz);			
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'D':
-			buf = _pg_strptime(buf, "%m/%d/%y", tm, GMTp);
+		    buf = _pg_strptime(buf, "%m/%d/%y", tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
@@ -153,40 +153,40 @@ label:
 			goto label;
 
 		case 'F':
-			buf = _pg_strptime(buf, "%Y-%m-%d", tm, GMTp);
+			buf = _pg_strptime(buf, "%Y-%m-%d", tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'R':
-			buf = _pg_strptime(buf, "%H:%M", tm, GMTp);
+			buf = _pg_strptime(buf, "%H:%M", tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'r':
 			//buf = _pg_strptime(buf, tptr->ampm_fmt, tm, GMTp);			
-			buf = _pg_strptime(buf, "%I:%M:%S %p", tm, GMTp);
+			buf = _pg_strptime(buf, "%I:%M:%S %p", tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'T':
-			buf = _pg_strptime(buf, "%H:%M:%S", tm, GMTp);
+			buf = _pg_strptime(buf, "%H:%M:%S", tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'X':
 			//buf = _pg_strptime(buf, tptr->X_fmt, tm, GMTp);
-			buf = _pg_strptime(buf, "%H:%M:%S", tm, GMTp);
+			buf = _pg_strptime(buf, "%H:%M:%S", tm, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'x':
 			//buf = _pg_strptime(buf, tptr->x_fmt, tm, GMTp);
-			buf = _pg_strptime(buf, "%m/%d/%y", tm, GMTp);			
+			buf = _pg_strptime(buf, "%m/%d/%y", tm, tz);			
 			if (buf == 0)
 				return 0;
 			break;
@@ -459,7 +459,7 @@ label:
 			char *cp;
 			int sverrno;
 			long n;
-			time_t t;
+			pg_time_t t;
 
 			sverrno = errno;
 			errno = 0;
@@ -470,8 +470,7 @@ label:
 			}
 			errno = sverrno;
 			buf = cp;
-			pg_gmtime_r(&t, tm);
-			*GMTp = 1;
+			pg_localtime_r(&t, tz, tm);
 			}
 			break;
 
@@ -514,11 +513,10 @@ label:
 				zonestr[TZ_STRLEN_MAX] = '\0';
 				// TODO: normal implementation
 				if (0 == strcmp(zonestr, "GMT")) {
-                                    tm->tm_zone = "GMT";
-				    *GMTp = 1;
+				  tm->tm_zone = "GMT";
 				}
 				else {
-                                    rb_notimplement();
+				  rb_notimplement();
 				}				
 				//} else if (0 == strcmp(zonestr, tzname[0])) {
 				    //tm->tm_isdst = 0;
@@ -535,8 +533,10 @@ label:
 
 
 const char *
-pg_strptime(const char * buf, const char * fmt,  struct pg_tm * tm)
+pg_strptime(const char * buf, 
+			const char * fmt,  
+			struct pg_tm * tm, 
+			struct pg_tz const *tz)
 {
-	int gmt = 0;
-	return  _pg_strptime(buf, fmt, tm, &gmt);
+	return  _pg_strptime(buf, fmt, tm, tz);
 }

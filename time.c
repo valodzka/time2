@@ -533,9 +533,6 @@ static VALUE time_localtime(int argc, VALUE *argv, VALUE time);
 static VALUE time_localtime_with_tz(VALUE time, struct pg_tz const * tz);
 static VALUE time_get_tm(VALUE, int);
 
-
-
-#define IF_HAVE_GMTIME_R(x) x
 #define GMTIME(tm, result) pg_gmtime_r(tm, &result)
 #define LOCALTIME(tm, result) pg_localtime_r(tm, timezone_default(NULL), &result)
 
@@ -638,7 +635,7 @@ search_time_t(struct pg_tm *tptr, int utc_p)
     struct pg_tm *tm, tm_lo, tm_hi;
     int d, have_guess;
     int find_dst;
-    IF_HAVE_GMTIME_R(struct pg_tm result);
+    struct pg_tm result;
 #define GUESS(p) (utc_p ? GMTIME(p, result) : LOCALTIME(p, result))
 
     find_dst = 0 < tptr->tm_isdst;
@@ -1344,7 +1341,7 @@ time_gmtime(VALUE time)
     struct time_object *tobj;
     struct pg_tm *tm_tmp;
     pg_time_t t;
-    IF_HAVE_GMTIME_R(struct pg_tm result);
+    struct pg_tm result;
 
     GetTimeval(time, tobj);
     if (tobj->gmt) {
@@ -2298,7 +2295,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
 	tm.tm_yday = INT_MIN;
     tm.tm_isdst = -1;
 
-    p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm);
+    p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, timezone_default(NULL));
     //printf("IM:Y:%d - Yd:%d - M:%d - Md:%d\n", tm.tm_year, tm.tm_yday, tm.tm_mon, tm.tm_mday);
 
     if (!p) rb_raise(rb_eArgError, "strptime error");
@@ -2334,7 +2331,7 @@ time_mdump(VALUE time)
     int nsec;
     int i;
     VALUE str;
-    IF_HAVE_GMTIME_R(struct pg_tm result);
+    struct pg_tm result;
 
     GetTimeval(time, tobj);
 

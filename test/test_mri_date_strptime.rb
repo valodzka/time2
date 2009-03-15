@@ -367,12 +367,14 @@ class TestDateStrptime < Test::Unit::TestCase
   end
 
   def test_strptime__minus
-    d = Time.strptime('-1', '%s')
-    assert_equal([1969, 12, 31, 23, 59, 59],
+    with_tz "UTC" do
+      d = Time.strptime('-1', '%s')
+      assert_equal([1969, 12, 31, 23, 59, 59],
                  [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
-    d = Time.strptime('-86400', '%s')
-    assert_equal([1969, 12, 31, 0, 0, 0],
+      d = Time.strptime('-86400', '%s')
+      assert_equal([1969, 12, 31, 0, 0, 0],
                  [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
+    end
 
 #    d = DateTime.strptime('-999', '%Q')
 #     assert_equal([1969, 12, 31, 23, 59, 59, 1.to_r/10**3],
