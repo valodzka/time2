@@ -312,27 +312,31 @@ rb_time_timeval(VALUE time)
     struct timeval t;
 
     if (TYPE(time) == T_DATA && RDATA(time)->dfree == time_free) {
-	GetTimeval(time, tobj);
-        t.tv_sec = (TYPEOF_TIMEVAL_TV_SEC)tobj->ts.tv_sec;
-        t.tv_usec = tobj->ts.tv_nsec / 1000;
-	return t;
+	  GetTimeval(time, tobj);
+	  t.tv_sec = (TYPEOF_TIMEVAL_TV_SEC)tobj->ts.tv_sec;
+	  t.tv_usec = tobj->ts.tv_nsec / 1000;
+	  return t;
     }
     return time_timeval(time, Qfalse);
 }
 
-struct timespec
-rb_time_timespec(VALUE time)
+static struct timespec
+rb_time_timespec_static(VALUE time)
 {
     struct time_object *tobj;
     struct timespec t;
 
     if (TYPE(time) == T_DATA && RDATA(time)->dfree == time_free) {
-	GetTimeval(time, tobj);
-        t = tobj->ts;
-	return t;
+	  GetTimeval(time, tobj);
+	  t = tobj->ts;
+	  return t;
     }
+
     return time_timespec(time, Qfalse);
 }
+
+//TODO:HACK
+struct timespec rb_time_timespec(VALUE time) { return rb_time_timespec(time); }
 
 /*
  *  call-seq:
@@ -362,11 +366,12 @@ time_s_at(int argc, VALUE *argv, VALUE klass)
     VALUE time, t;
 
     if (rb_scan_args(argc, argv, "11", &time, &t) == 2) {
-	ts.tv_sec = NUM2LONG(time);
-	ts.tv_nsec = NUM2LONG(rb_funcall(t, id_mul, 1, INT2FIX(1000)));
+	  ts.tv_sec = NUM2LONG(time);
+	  ts.tv_nsec = NUM2LONG(rb_funcall(t, id_mul, 1, INT2FIX(1000)));
     }
     else {
-	ts = rb_time_timespec(time);
+	  //HACK: to sure that function will be caled from this module, not from ruby library
+	  ts = rb_time_timespec_static(time);
     }
     t = time_new_internal(klass, ts.tv_sec, ts.tv_nsec, timezone_default(NULL));
     if (TYPE(time) == T_DATA && RDATA(time)->dfree == time_free) {
@@ -1630,7 +1635,7 @@ time_succ(VALUE time)
 
     GetTimeval(time, tobj);
     gmt = tobj->gmt;
-    time = rb_time_wihth_tz_nano_new(tobj->ts.tv_sec + 1, tobj->ts.tv_nsec, tobj->tz);
+    time = rb_time_with_tz_nano_new(tobj->ts.tv_sec + 1, tobj->ts.tv_nsec, tobj->tz);
     GetTimeval(time, tobj);
     tobj->gmt = gmt;
     return time;
@@ -2224,13 +2229,17 @@ time_strftime(VALUE time, VALUE format)
     return str;
 }
 
+static void 
+time_tm_now(struct pg_tm *tm, struct pg_tz const* tz)
+{
+  pg_time_t now = time(NULL);
+  pg_localtime_r(&now, tz, tm);
+}
+
 static void
 time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
-{
-    pg_time_t now = time(NULL);
+{  
     struct pg_tm tm_now;
-
-    pg_localtime_r(&now, tz, &tm_now);//TODO: do it more efficient, not call immediately
 
 	if (tm->tm_yday != INT_MIN) {
 	  if (tm->tm_mday != INT_MIN || tm->tm_mon != INT_MIN) {
@@ -2243,6 +2252,7 @@ time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
 	}
 
     if (tm->tm_year == INT_MIN) {
+	  time_tm_now(&tm_now, tz);
 	  tm->tm_year = tm_now.tm_year;
 	  if (tm->tm_mon == INT_MIN) {
 		tm->tm_mon = tm_now.tm_mon;
@@ -2252,6 +2262,7 @@ time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
 	  }
 	  else {
 		if(tm->tm_mday == INT_MIN) {
+		  time_tm_now(&tm_now, tz);
 		  tm->tm_mday = 1;
 		}
 	  }
@@ -2269,7 +2280,6 @@ time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
 		}
 	  }
 	}
-
 }
 
 static VALUE

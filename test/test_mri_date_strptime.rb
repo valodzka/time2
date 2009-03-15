@@ -1,5 +1,4 @@
-require 'test/unit'
-require 'timetz'
+require File.join(File.dirname(__FILE__), 'test_helper')
 
 class TestDateStrptime < Test::Unit::TestCase
 
@@ -287,7 +286,7 @@ class TestDateStrptime < Test::Unit::TestCase
     assert_nil(Date._strptime('Sundai,', '%A,'))
     assert_nil(Date._strptime('Januari,', '%B,'))
   end
-  
+
   def test_strptime
     assert_equal(Date.new, Date.strptime)
     d = Date.new(2002,3,14)

@@ -8,14 +8,6 @@
 ** the output of strftime is supposed to be locale specific
 ** whereas the output of asctime is supposed to be constant.
 */
-
-#ifndef lint
-#ifndef NOID
-static char	elsieid[] = "@(#)asctime.c	8.2";
-#endif /* !defined NOID */
-#endif /* !defined lint */
-
-/*LINTLIBRARY*/
 #include <time.h>
 #include "c.h"
 #include "pgtime.h"
@@ -42,9 +34,9 @@ static char	elsieid[] = "@(#)asctime.c	8.2";
 ** but many implementations pad anyway; most likely the standards are buggy.
 */
 #ifdef __GNUC__
-#define ASCTIME_FMT	"%.3s %.3s%3d %2.2d:%2.2d:%2.2d %-4s\n"
+#define ASCTIME_FMT	"%.3s %.3s%3d %2.2d:%2.2d:%2.2d %-4s"
 #else /* !defined __GNUC__ */
-#define ASCTIME_FMT	"%.3s %.3s%3d %02.2d:%02.2d:%02.2d %-4s\n"
+#define ASCTIME_FMT	"%.3s %.3s%3d %02.2d:%02.2d:%02.2d %-4s"
 #endif /* !defined __GNUC__ */
 /*
 ** For years that are more than four digits we put extra spaces before the year
@@ -53,9 +45,9 @@ static char	elsieid[] = "@(#)asctime.c	8.2";
 ** that no output is better than wrong output).
 */
 #ifdef __GNUC__
-#define ASCTIME_FMT_B	"%.3s %.3s%3d %2.2d:%2.2d:%2.2d     %s\n"
+#define ASCTIME_FMT_B	"%.3s %.3s%3d %2.2d:%2.2d:%2.2d     %s"
 #else /* !defined __GNUC__ */
-#define ASCTIME_FMT_B	"%.3s %.3s%3d %02.2d:%02.2d:%02.2d     %s\n"
+#define ASCTIME_FMT_B	"%.3s %.3s%3d %02.2d:%02.2d:%02.2d     %s"
 #endif /* !defined __GNUC__ */
 
 #define STD_ASCTIME_BUF_SIZE	26
@@ -85,11 +77,11 @@ pg_asctime_r(const struct pg_tm *timeptr, char *buf)
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 	};
-	register const char *	wn;
-	register const char *	mn;
+	const char *	wn;
+	const char *	mn;
 	char			year[INT_STRLEN_MAXIMUM(int) + 2];
 	char			result[MAX_ASCTIME_BUF_SIZE];
-        struct tm               tm;
+	struct tm       tm;
         
         if (timeptr->tm_wday < 0 || timeptr->tm_wday >= DAYSPERWEEK)
 		wn = "???";

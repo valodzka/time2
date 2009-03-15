@@ -50,13 +50,10 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/* SOURCE: http://www.freebsd.org.ua/cgi/cvsweb.cgi/src/lib/libc/stdtime/?cvsroot=freebsd */
-#ifndef lint
-#ifndef NOID
-static char sccsid[]  = "@(#)strptime.c	0.1 (Powerdog) 94/03/27";
-#endif /* !defined NOID */
-#endif /* not lint */
-
+/* SOURCE: 
+     http://www.freebsd.org.ua/cgi/cvsweb.cgi/src/lib/libc/stdtime/?cvsroot=freebsd
+	 Revision 1.35, Mon Nov 17 04:19:15 2003 UTC by nectar 
+ */
 #include "c.h"
 #include "private.h"
 #include "pgtz.h"
@@ -77,8 +74,7 @@ _pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, int *GMTp)
 {
 	char	c;
 	const char *ptr;
-	int	i,
-		len;
+	int	i, len;
 	int Ealternative, Oalternative;
 
 	ptr = fmt;
