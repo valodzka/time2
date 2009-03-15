@@ -376,12 +376,12 @@ class TestDateStrptime < Test::Unit::TestCase
                  [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
     end
 
-#    d = DateTime.strptime('-999', '%Q')
-#     assert_equal([1969, 12, 31, 23, 59, 59, 1.to_r/10**3],
-# 		 [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.sec_fraction])
-#     d = DateTime.strptime('-1000', '%Q')
-#     assert_equal([1969, 12, 31, 23, 59, 59, 0],
-# 		 [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.sec_fraction])
+    d = Time.strptime('-999', '%Q')
+    assert_equal([1969, 12, 31, 23, 59, 59, 1.to_r/10**3],
+                  [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.sec_fraction])
+    d = Time.strptime('-1000', '%Q')
+    assert_equal([1969, 12, 31, 23, 59, 59, 0],
+                 [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.sec_fraction])
   end
 
   def test_strptime__comp
