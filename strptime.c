@@ -100,7 +100,7 @@ static const struct pg_time_locale {
 #define strncasecmp(s1, s2, n) (st_strncasecmp(s1, s2, n))
 
 static const char *
-_pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, struct pg_tz const *tz)
+_pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, long *nsec, struct pg_tz const *tz)
 {
 	char	c;
 	const char *ptr;
@@ -137,7 +137,7 @@ label:
 			break;
 
 		case '+':
-			buf = _pg_strptime(buf, loc->date_fmt, tm, tz);
+		  buf = _pg_strptime(buf, loc->date_fmt, tm, nsec,tz);
 			if (buf == 0)
 				return 0;
 			break;
@@ -160,13 +160,13 @@ label:
 			break;
 
 		case 'c': /* Date and time, using the locale's format. */
-			buf = _pg_strptime(buf, loc->c_fmt, tm, tz);			
+ 		    buf = _pg_strptime(buf, loc->c_fmt, tm, nsec, tz);			
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'D':
-		    buf = _pg_strptime(buf, "%m/%d/%y", tm, tz);
+			buf = _pg_strptime(buf, "%m/%d/%y", tm, nsec, tz);
 			if (buf == 0)
 				return 0;
 			break;
@@ -184,38 +184,38 @@ label:
 			goto label;
 
 		case 'F':
-			buf = _pg_strptime(buf, "%Y-%m-%d", tm, tz);
+			buf = _pg_strptime(buf, "%Y-%m-%d", tm, nsec, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'R':
-			buf = _pg_strptime(buf, "%H:%M", tm, tz);
+			buf = _pg_strptime(buf, "%H:%M", tm, nsec, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'r': /* 12-hour clock time using the AM/PM notation; 
 					 in the default locale, this shall be equivalent to %I:%M:%S %p */
-  		    buf = _pg_strptime(buf, loc->ampm_fmt, tm, tz);
+  		    buf = _pg_strptime(buf, loc->ampm_fmt, tm, nsec, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'T':
-			buf = _pg_strptime(buf, "%H:%M:%S", tm, tz);
+			buf = _pg_strptime(buf, "%H:%M:%S", tm, nsec, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'X': /* The time, using the locale's format */
-			buf = _pg_strptime(buf, loc->X_fmt, tm, tz);
+			buf = _pg_strptime(buf, loc->X_fmt, tm, nsec, tz);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'x': /* The date, using the locale's date format */
-			buf = _pg_strptime(buf, loc->x_fmt, tm, tz);			
+			buf = _pg_strptime(buf, loc->x_fmt, tm, nsec, tz);
 			if (buf == 0)
 				return 0;
 			break;
@@ -461,22 +461,36 @@ label:
 					ptr++;
 			break;
 
-		case 's':
+		case 'Q': // number of miliseconds since the epoch (1970-01-01 00:00:00 UTC)
+		case 's': // number of seconds since the epoch (1970-01-01 00:00:00 UTC)
 			{
 			char *cp;
 			int sverrno;
-			long n;
+			long n, r, ms = 0;
 			pg_time_t t;
 
 			sverrno = errno;
 			errno = 0;
 			n = strtol(buf, &cp, 10);
-			if (errno == ERANGE || (long)(t = n) != n) {
+
+			if (c == 's') {
+				t = n;
+				r = (long)t;
+			}
+			else {
+				int d = n < 0 ? -1000 : 1000;
+				t = n / d;
+				ms = n % d;
+				r = ((long)t) * 1000L + ms;
+			}
+
+			if (errno == ERANGE || r != n) {
 				errno = sverrno;
 				return 0;
 			}
 			errno = sverrno;
 			buf = cp;
+			*nsec = ms * 1000000;
 			pg_localtime_r(&t, tz, tm);
 			}
 			break;
@@ -538,13 +552,13 @@ label:
 	
 	switch(has_am_pm) {
 	case 1: /* AM */
-	  if (tm->tm_hour == 12)
-		tm->tm_hour = 0;
-	  break;
+		if (tm->tm_hour == 12)
+			tm->tm_hour = 0;
+		break;
 	case 2: /* PM */
-	  if (tm->tm_hour != 12)
-		tm->tm_hour += 12;
-	  break;
+		if (tm->tm_hour != 12)
+			tm->tm_hour += 12;
+		break;
 	}
 
 	return (char *)buf;
@@ -555,7 +569,8 @@ const char *
 pg_strptime(const char * buf, 
 			const char * fmt,  
 			struct pg_tm * tm, 
+			long *nsec,
 			struct pg_tz const *tz)
 {
-	return  _pg_strptime(buf, fmt, tm, tz);
+	return  _pg_strptime(buf, fmt, tm, nsec, tz);
 }

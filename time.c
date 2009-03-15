@@ -2228,18 +2228,18 @@ time_strftime(VALUE time, VALUE format)
 static void 
 time_tm_now(struct pg_tm *tm, struct pg_tz const* tz)
 {
-  pg_time_t now = time(NULL);
-  pg_localtime_r(&now, tz, tm);
+   pg_time_t now = time(NULL);
+   pg_localtime_r(&now, tz, tm);
 }
 
 static void
 time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
 {  
-    struct pg_tm tm_now;
+	struct pg_tm tm_now;
 
 	if (tm->tm_yday != INT_MIN) {
-	  if (tm->tm_mday != INT_MIN || tm->tm_mon != INT_MIN) {
-		//TODO: add to documentation
+		if (tm->tm_mday != INT_MIN || tm->tm_mon != INT_MIN) {
+			//TODO: add to documentation
 		//rb_warn("Year day redefines month and month day");
 	  }
 	  // mktime will detect appropriate month and day 
@@ -2285,6 +2285,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
     struct pg_tz *tz;
     VALUE time_obj;
     int utc_p;
+	long nsec = 0;
     const char *p;
 
     MEMZERO(&tm, struct pg_tm, 1);
@@ -2294,7 +2295,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
 	tm.tm_yday = INT_MIN;
     tm.tm_isdst = -1;
 
-    p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, timezone_default(NULL));
+    p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec, timezone_default(NULL));
 
     if (!p) rb_raise(rb_eArgError, "strptime error");
     
@@ -2309,7 +2310,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
 
     time_fill_invalid_tm(&tm, tz);
 
-    time_obj = time_new_internal(klass, make_time_t(&tm, tz, utc_p), 0, tz);
+    time_obj = time_new_internal(klass, make_time_t(&tm, tz, utc_p), nsec, tz);
 
     return utc_p ? time_gmtime(time_obj) : time_localtime_with_tz(time_obj, tz);
 }
