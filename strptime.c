@@ -107,6 +107,7 @@ _pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, struct pg_tz co
 	int	i, len;
 	int Ealternative, Oalternative;
 	struct pg_time_locale const *loc = &pgDefaultTimeLocale;
+	int has_am_pm = 0; // 1 - AM, 2 - PM
 
 	ptr = fmt;
 	while (*ptr != 0) {
@@ -300,48 +301,21 @@ label:
 			break;
 
 		case 'p':
-			/*
-			 * XXX This is bogus if parsed before hour-related
-			 * specifiers.
-			 */
-			/*
-			len = strlen(tptr->am);
-			if (strncasecmp(buf, tptr->am, len) == 0) {
-				if (tm->tm_hour > 12)
-					return 0;
-				if (tm->tm_hour == 12)
-					tm->tm_hour = 0;
-				buf += len;
-				break;
-			}
-
-			len = strlen(tptr->pm);
-			if (strncasecmp(buf, tptr->pm, len) == 0) {
-				if (tm->tm_hour > 12)
-					return 0;
-				if (tm->tm_hour != 12)
-					tm->tm_hour += 12;
-				buf += len;
-				break;
-			}*/
 			if (strncasecmp(buf, "am", (len=2)) == 0 || strncasecmp(buf, "a.m.", (len=4)) == 0) {
-				if (tm->tm_hour > 12)
-					return 0;
-				if (tm->tm_hour == 12)
-					tm->tm_hour = 0;
-				buf += len;
-				break;
+			  has_am_pm = 1;
+			  if (tm->tm_hour > 12)
+				return 0;
+			  buf += len;
+			  break;
 			}
 
 			if (strncasecmp(buf, "pm", (len=2)) == 0 || strncasecmp(buf, "p.m.", (len=4)) == 0) {
-				if (tm->tm_hour > 12)
-					return 0;
-				if (tm->tm_hour != 12)
-					tm->tm_hour += 12;
-				buf += 4;
-				break;
+			  has_am_pm = 2;
+			  if (tm->tm_hour > 12)
+				return 0;
+			  buf += 4;
+			  break;
 			}
-
 			return 0;
 
 		case 'A':
@@ -382,6 +356,11 @@ label:
 			}
 			if (i > 53)
 				return 0;
+			else {
+			  //if (c == 'U')
+			  //else
+
+			}
 
 			if (*buf != 0 && isspace((unsigned char)*buf))
 				while (*ptr != 0 && !isspace((unsigned char)*ptr))
@@ -556,6 +535,18 @@ label:
 			break;
 		}
 	}
+	
+	switch(has_am_pm) {
+	case 1: /* AM */
+	  if (tm->tm_hour == 12)
+		tm->tm_hour = 0;
+	  break;
+	case 2: /* PM */
+	  if (tm->tm_hour != 12)
+		tm->tm_hour += 12;
+	  break;
+	}
+
 	return (char *)buf;
 }
 
