@@ -532,7 +532,7 @@ static VALUE time_get_tm(VALUE, int);
 
 #define IF_HAVE_GMTIME_R(x) x
 #define GMTIME(tm, result) pg_gmtime_r(tm, &result)
-#define LOCALTIME(tm, result) pg_localtime_r(tm, timezone_default(0), &result)
+#define LOCALTIME(tm, result) pg_localtime_r(tm, timezone_default(NULL), &result)
 
 static int
 leap_year_p(long y)
@@ -890,7 +890,7 @@ make_time_t(struct pg_tm *tptr, struct pg_tz *tz, int utc_p)
 #endif
     struct pg_tm buf;
     struct pg_tm result;
-
+    
     buf = *tptr;
     if (utc_p) {
 #if defined(HAVE_TIMEGM)
@@ -2239,7 +2239,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
         utc_p = 1;
     }
     else {//currently no timezone support
-        tz == timezone_default(NULL);
+        tz = timezone_default(NULL);
         utc_p = 0;
     }
 
@@ -2490,7 +2490,6 @@ timezone_default(struct pg_tz *dflt)
     else if (dflt) {
         tz = dflt;
     }
-
     return tz;
 }
 

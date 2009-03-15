@@ -1715,10 +1715,11 @@ const pg_tz *tz)
 }
 
 static pg_time_t
-pg_time1(struct pg_tm * const	tmp,
-struct pg_tm * (* const	funcp)(const pg_time_t *, long, struct pg_tm *, struct pg_tz const *),
-const long		offset,
-const pg_tz const * tz)
+pg_time1(
+    struct pg_tm * const	tmp,
+    struct pg_tm * (* const	funcp)(const pg_time_t *, long, struct pg_tm *, struct pg_tz const *),
+    const long		offset,
+    struct pg_tz const * tz)
 {
 	register time_t			t;
 	register const struct state *	sp;
