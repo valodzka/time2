@@ -41,9 +41,9 @@ int main(int argc, char** argv)
 		puts(select_default_timezone()->TZname);
 	}
 	{
-		struct pg_tm tm;
-		pg_strptime("17.10.1980", "%d.%m.%Y", &tm);
-		printf("%d-%d-%d\n", tm.tm_mday, tm.tm_mon, tm.tm_year);
+		//struct pg_tm tm;
+		//pg_strptime("17.10.1980", "%d.%m.%Y", &tm);
+		//printf("%d-%d-%d\n", tm.tm_mday, tm.tm_mon, tm.tm_year);
 	}
     
     return (EXIT_SUCCESS);

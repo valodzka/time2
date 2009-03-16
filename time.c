@@ -33,6 +33,9 @@
 # define TYPEOF_TIMEVAL_TV_SEC time_t
 #endif
 
+#define NEGATIVE_TIME_T 1
+#define HAVE_TIMEGM     1
+
 VALUE rb_cTime;
 VALUE rb_cTimeZone;
 
@@ -335,7 +338,7 @@ rb_time_timespec_static(VALUE time)
 }
 
 //TODO:HACK
-struct timespec rb_time_timespec(VALUE time) { return rb_time_timespec(time); }
+struct timespec rb_time_timespec(VALUE time) { return rb_time_timespec_static(time); }
 
 /*
  *  call-seq:
@@ -1033,7 +1036,11 @@ time_to_i(VALUE time)
     struct time_object *tobj;
 
     GetTimeval(time, tobj);
+#ifdef TIMET2NUM /* COMPAT */
     return TIMET2NUM(tobj->ts.tv_sec);
+#else
+	return LONG2NUM(tobj->ts.tv_sec);
+#endif
 }
 
 /*
@@ -1220,8 +1227,10 @@ time_utc_p(VALUE time)
 static VALUE
 time_hash(VALUE time)
 {
+	/* COMPAT
+	TODO: find way to check if new api avaliable
     struct time_object *tobj;
-    long hash;
+    long hash = 0;
 
     GetTimeval(time, tobj);
 #if SIZEOF_TIME_T > SIZEOF_INT
@@ -1232,6 +1241,13 @@ time_hash(VALUE time)
 #endif
     hash = rb_hash_end(rb_hash_uint(hash, tobj->ts.tv_nsec));
     return LONG2FIX(hash);
+	*/
+	struct time_object *tobj;
+	long hash;
+
+	GetTimeval(time, tobj);
+	hash = tobj->ts.tv_sec ^ tobj->ts.tv_nsec;
+	return LONG2FIX(hash);
 }
 
 /* :nodoc: */
@@ -1275,12 +1291,11 @@ time_localtime_with_tz(VALUE time, struct pg_tz const * tz)
 	    return time;
     }
     else {
-	time_modify(time);
+		time_modify(time);
     }
     t = tobj->ts.tv_sec;
     tm_tmp = pg_localtime_r(&t, tz, &result);
-    if (!tm_tmp)
-	rb_raise(rb_eArgError, "localtime error");
+    if (!tm_tmp) rb_raise(rb_eArgError, "localtime error");
     tobj->tm = *tm_tmp;
     tobj->tz = tz;
     tobj->tm_got = 1;
@@ -1442,13 +1457,13 @@ time_asctime(VALUE time)
 #ifdef HAVE_TM_ZONE
 #  define COPY_TZ(x) x
 #else
-#  define COPY_TZ (x)
+#  define COPY_TZ (x) (0)
 #endif
 
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
 #  define COPY_GMTOFF(x) x
 #else
-#  define COPY_GMTOFF(x)
+#  define COPY_GMTOFF(x) (0)
 #endif
 
 
@@ -1464,8 +1479,8 @@ time_asctime(VALUE time)
 	old_system_tm.tm_wday = (timeptr)->tm_wday;\
 	old_system_tm.tm_yday = (timeptr)->tm_yday;\
 	old_system_tm.tm_isdst = (timeptr)->tm_isdst;\
-	COPY_GMTOFF(old_system_tm.tm_gmtoff = (timeptr)->tm_gmtoff);\
-	COPY_TZ(old_system_tm.tm_zone = (timeptr)->tm_zone);\
+	/*TODO:COPY_GMTOFF(old_system_tm.tm_gmtoff = (timeptr)->tm_gmtoff);*/\
+	/*TODO:COPY_TZ(old_system_tm.tm_zone = (timeptr)->tm_zone);*/\
         len = rb_strftime(s, maxsize, format,  \
 	    &old_system_tm, ts, gmt);\
   } while(0)

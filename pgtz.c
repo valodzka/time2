@@ -1022,8 +1022,7 @@ identify_system_timezone(void)
 
 	if (!tm)
 	{
-		ereport(WARNING,
-				(errmsg_internal("could not determine current date/time: localtime failed")));
+		rb_warn("could not determine current date/time: localtime failed");
 		return NULL;
 	}
 
@@ -1035,8 +1034,6 @@ identify_system_timezone(void)
 		if (strcmp(tzname, win32_tzmap[i].stdname) == 0 ||
 			strcmp(tzname, win32_tzmap[i].dstname) == 0)
 		{
-			elog(DEBUG4, "TZ \"%s\" matches Windows timezone \"%s\"",
-				 win32_tzmap[i].pgtzname, tzname);
 			return win32_tzmap[i].pgtzname;
 		}
 	}
@@ -1053,8 +1050,7 @@ identify_system_timezone(void)
 					 KEY_READ,
 					 &rootKey) != ERROR_SUCCESS)
 	{
-		ereport(WARNING,
-				(errmsg_internal("could not open registry key to identify Windows timezone: %i", (int) GetLastError())));
+		rb_warn("could not open registry key to identify Windows timezone: %i", (int) GetLastError());
 		return NULL;
 	}
 
@@ -1080,15 +1076,13 @@ identify_system_timezone(void)
 		{
 			if (r == ERROR_NO_MORE_ITEMS)
 				break;
-			ereport(WARNING,
-					(errmsg_internal("could not enumerate registry subkeys to identify Windows timezone: %i", (int) r)));
+			rb_warn("could not enumerate registry subkeys to identify Windows timezone: %i", (int) r);
 			break;
 		}
 
 		if ((r = RegOpenKeyEx(rootKey, keyname, 0, KEY_READ, &key)) != ERROR_SUCCESS)
 		{
-			ereport(WARNING,
-					(errmsg_internal("could not open registry subkey to identify Windows timezone: %i", (int) r)));
+			rb_warn("could not open registry subkey to identify Windows timezone: %i", (int) r);
 			break;
 		}
 
@@ -1096,8 +1090,7 @@ identify_system_timezone(void)
 		namesize = sizeof(zonename);
 		if ((r = RegQueryValueEx(key, "Std", NULL, NULL, zonename, &namesize)) != ERROR_SUCCESS)
 		{
-			ereport(WARNING,
-					(errmsg_internal("could not query value for 'std' to identify Windows timezone: %i", (int) r)));
+			rb_warn("could not query value for 'std' to identify Windows timezone: %i", (int) r);
 			RegCloseKey(key);
 			break;
 		}
@@ -1112,8 +1105,7 @@ identify_system_timezone(void)
 		namesize = sizeof(zonename);
 		if ((r = RegQueryValueEx(key, "Dlt", NULL, NULL, zonename, &namesize)) != ERROR_SUCCESS)
 		{
-			ereport(WARNING,
-					(errmsg_internal("could not query value for 'dlt' to identify Windows timezone: %i", (int) r)));
+			rb_warn("could not query value for 'dlt' to identify Windows timezone: %i", (int) r);
 			RegCloseKey(key);
 			break;
 		}
@@ -1138,16 +1130,12 @@ identify_system_timezone(void)
 			if (strcmp(localtzname, win32_tzmap[i].stdname) == 0 ||
 				strcmp(localtzname, win32_tzmap[i].dstname) == 0)
 			{
-				elog(DEBUG4, "TZ \"%s\" matches localized Windows timezone \"%s\" (\"%s\")",
-					 win32_tzmap[i].pgtzname, tzname, localtzname);
 				return win32_tzmap[i].pgtzname;
 			}
 		}
 	}
 
-	ereport(WARNING,
-			(errmsg("could not find a match for Windows timezone \"%s\"",
-					tzname)));
+	rb_warn("could not find a match for Windows timezone \"%s\"", tzname);
 	return NULL;
 }
 #endif   /* WIN32 */
