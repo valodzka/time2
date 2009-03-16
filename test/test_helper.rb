@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'test_helper')
+$: << File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'time'
 require 'timetz'

@@ -1,4 +1,8 @@
 *.o
-Makefile
-*.bundle
+*.obj
 *.so
+*.exp
+*.lib
+*.pdb
+*.def
+Makefile

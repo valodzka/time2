@@ -9,7 +9,7 @@ CLEAN.include ["ext/time2/#{BIN}", "lib/**/#{BIN}", 'ext/time2/Makefile',
 
 desc "Run all the tests"
 Rake::TestTask.new do |t|
-    t.libs << "test"
+    t.libs = []
     t.test_files = FileList['test/test_*.rb']
     t.verbose = true
 end
@@ -31,7 +31,11 @@ task :time2 => ["#{time2_dir}Makefile", time2_so]
 
 file time2_so => time2_files do
   Dir.chdir(time2_dir) do
-    sh(RUBY_PLATFORM =~ /mswin/ ? 'nmake' : 'make')
+    if (vs=ENV["VS90COMNTOOLS"]) && !ENV['VCINSTALLDIR'] # initialize VS 9.0
+      prefix = %Q[%comspec% /k ""#{File.join(vs, '..', '..', 'VC', 'vcvarsall.bat')}"" x86 &&]
+    end
+    
+    sh(RUBY_PLATFORM =~ /mswin/ ? "#{prefix} nmake" : 'make')
   end
   cp time2_so, "lib"
 end
