@@ -1,12 +1,14 @@
 h2. New Ruby Time implementation
 
-h3. Radical solution for problem with ruby Time class
+h3. The radical solution to ruby Time class problems
 
-Ruby Time class is one of the most disappointment part of ruby standard library. It "can't handle time zones":http://michaelbuffington.com/2006/10/11/i-heap-scorn-upon-rubys-time-class/ by design (but has methods which accept time zone as parameter) and this can't be changed by "third party libraries":http://tzinfo.rubyforge.org (except as through new class (as "Rails does":http://api.rubyonrails.org/classes/ActiveSupport/TimeWithZone.html)). It has pure ruby implementation of time parsing function, but this is "awful slow":http://scie.nti.st/2007/11/28/ruby-vs-python-date-parsing-am-i-doing-somethin-wrong.
+Ruby Time class is the one of the most disappointment parts of the ruby standard library.
+It "can't handle time zones":http://michaelbuffington.com/2006/10/11/i-heap-scorn-upon-rubys-time-class/ by design (although some methods accept time zone as a parameter) and this can't be changed by "third party libraries":http://tzinfo.rubyforge.org (except via creating a new class (as "Rails does":http://api.rubyonrails.org/classes/ActiveSupport/TimeWithZone.html)).
+Also it has pure ruby implementation of time parsing method, which is "awfully slow":http://scie.nti.st/2007/11/28/ruby-vs-python-date-parsing-am-i-doing-somethin-wrong. 
 
-Project tries radically solve this problems. It updates core ruby Time class. Based on code from trunk, it, first of all, adds full platform independent time zones support, including full tz database, transition between time zones, dst, and secondary it add fast platform independent implementation of <code>strptime</code>. 
+Project tries to radically solve this problems. First of all, it adds full platform independent time zone support (including full tz database, transition between time zones, dst) and fast implementation of the <code>strptime</code> method. 
 
-Library will be distributed as a gem when became production ready, but I hope this code will be included in ruby core.
+Library will be distributed as a gem when become production ready, but I hope this code will be included in ruby core.
 
 h3. Example
 
@@ -52,8 +54,7 @@ Platform: ruby 1.9.2dev (2009-03-12 trunk 22918) [i686-linux]
 
 h4. Time zones conversion
 
-About 13 times faster than TZInfo, but can be event faster if use <code>local</code> instead of  <code>getlocal</code> which creates new object every time
-
+About 13 times faster than TZInfo, but could be even faster if you use <code>local</code> instead of <code>getlocal</code> which creates a new object every time 
 <pre>
 
 n = 100000
@@ -77,7 +78,7 @@ Benchmark.bm{|r|
 
 h4. strptime
 
-About 50 times faster than <code>strptime</code> from ruby standard library (we use <code>Method#call</code> to avoid redefinition)
+About 50 times faster than <code>strptime</code> from the ruby standard library (we use <code>Method#call</code> to avoid redefinition) 
 
 <pre>
 
@@ -106,7 +107,7 @@ Benchmark.bm{|b|
 
 h3. Portability
 
-Code tested on Debian Lenny with GCC, should also work on Windows with Visual C++ 2008 (small modifications might be required)
+Code tested on Debian Etch with GCC, should also work on Windows with Visual C++ 2008 (small modifications might be required) 
 
 h3. TODO
 
@@ -124,7 +125,7 @@ h3. Acknowledgements
 
 h3. License
 
-Same terms as Ruby unless otherwise declared in specific file
+Same terms as Ruby unless otherwise specified in the file.
 
 
 
