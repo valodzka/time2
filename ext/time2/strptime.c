@@ -313,7 +313,7 @@ label:
 			  has_am_pm = 2;
 			  if (tm->tm_hour > 12)
 				return 0;
-			  buf += 4;
+			  buf += len;
 			  break;
 			}
 			return 0;

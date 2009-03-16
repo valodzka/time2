@@ -18,6 +18,15 @@ task :default => [:build, :test]
 
 task :build => :time2
 
+desc "initialize Visual Studio Command Prompt"
+task :vscp do
+  if (vs=ENV["VS90COMNTOOLS"]) && !ENV['VCINSTALLDIR'] 
+    sh %Q[%comspec% /k ""#{File.join(vs, '..', '..', 'VC', 'vcvarsall.bat')}"" x86]
+  else
+    puts(ENV['VCINSTALLDIR'] ? "VSCP already initialized" : "enviroment variable VS90COMNTOOLS not found")
+  end
+end
+
 time2_dir = "ext/time2/"
 time2_so = "#{time2_dir}time2.#{Config::CONFIG['DLEXT']}"
 time2_files = FileList[
@@ -31,11 +40,7 @@ task :time2 => ["#{time2_dir}Makefile", time2_so]
 
 file time2_so => time2_files do
   Dir.chdir(time2_dir) do
-    if (vs=ENV["VS90COMNTOOLS"]) && !ENV['VCINSTALLDIR'] # initialize VS 9.0
-      prefix = %Q[%comspec% /k ""#{File.join(vs, '..', '..', 'VC', 'vcvarsall.bat')}"" x86 &&]
-    end
-    
-    sh(RUBY_PLATFORM =~ /mswin/ ? "#{prefix} nmake" : 'make')
+    sh(RUBY_PLATFORM =~ /mswin/ ? "nmake" : 'make')    
   end
   cp time2_so, "lib"
 end

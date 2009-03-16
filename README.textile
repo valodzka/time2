@@ -113,7 +113,7 @@ Code tested on Debian Etch with GCC, should also work on Windows with VC 9 (smal
 h3. TODO
 
 * currently issue segfault with methods which uses internal Time API, i.e. some <code>File</code>, <code>Socket</code> and <code>Zlib</code> methods
-* <code>strptime</code> implementation doesn't support %Q, %N and some other ruby specific flags
+* <code>strptime</code> implementation doesn't support some special flags like
 * code isn't clean enough, many old code should be removed
 * tests, tests, tests,
 * ugly english :)
