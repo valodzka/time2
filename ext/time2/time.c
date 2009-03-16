@@ -151,9 +151,9 @@ time_init(VALUE time)
 #define NMOD(x,y) ((y)-(-((x)+1)%(y))-1)
 
 static void
-time_overflow_p(time_t *secp, long *nsecp)
+time_overflow_p(pg_time_t *secp, long *nsecp)
 {
-    time_t tmp, sec = *secp;
+    pg_time_t tmp, sec = *secp;
     long nsec = *nsecp;
 
     if (nsec >= 1000000000) {	/* nsec positive overflow */
@@ -172,10 +172,7 @@ time_overflow_p(time_t *secp, long *nsecp)
 	}
 	sec = tmp;
     }
-#ifndef NEGATIVE_TIME_T
-    if (sec < 0)
-	rb_raise(rb_eArgError, "time must be positive");
-#endif
+
     *secp = sec;
     *nsecp = nsec;
 }
@@ -226,10 +223,6 @@ time_timespec(VALUE num, int interval)
     const char *tstr = interval ? "time interval" : "time";
     VALUE i, f, ary;
 
-#ifndef NEGATIVE_TIME_T
-    interval = 1;
-#endif
-
     switch (TYPE(num)) {
       case T_FIXNUM:
 	t.tv_sec = FIX2LONG(num);
@@ -249,7 +242,7 @@ time_timespec(VALUE num, int interval)
                 d += 1;
                 f -= 1;
             }
-	    t.tv_sec = (time_t)f;
+	    t.tv_sec = (pg_time_t)f;
 	    if (f != t.tv_sec) {
 		rb_raise(rb_eRangeError, "%f out of Time range", RFLOAT_VALUE(num));
 	    }
@@ -518,9 +511,6 @@ time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz)
     /* value validation */
     if (
 	tm->tm_year != year ||
-#ifndef NEGATIVE_TIME_T
-	tm->tm_year < 69 ||
-#endif
 	   tm->tm_mon  < 0 || tm->tm_mon  > 11
 	|| tm->tm_mday < 1 || tm->tm_mday > 31
 	|| tm->tm_hour < 0 || tm->tm_hour > 24
@@ -546,7 +536,7 @@ leap_year_p(long y)
 
 #define DIV(n,d) ((n)<0 ? NDIV((n),(d)) : (n)/(d))
 
-static time_t
+static pg_time_t
 timegm_noleapsecond(struct pg_tm *tm)
 {
     static const int common_year_yday_offset[] = {
@@ -594,7 +584,7 @@ timegm_noleapsecond(struct pg_tm *tm)
      *  ((tm_year-1)/100)*86400 + ((tm_year+299)/400)*86400
      */
     return tm->tm_sec + tm->tm_min*60 + tm->tm_hour*3600 +
-	   (time_t)(tm_yday +
+	   (pg_time_t)(tm_yday +
 		    (tm_year-70)*365 +
 		    DIV(tm_year-69,4) -
 		    DIV(tm_year-1,100) +
@@ -885,22 +875,19 @@ search_time_t(struct pg_tm *tptr, int utc_p)
     return 0;			/* not reached */
 }
 
-static time_t
+static pg_time_t
 make_time_t(struct pg_tm *tptr, struct pg_tz *tz, int utc_p)
 {
     pg_time_t t;
-#ifdef NEGATIVE_TIME_T
     struct pg_tm *tmp;
-#endif
     struct pg_tm buf;
     struct pg_tm result;
     
     buf = *tptr;
     if (utc_p) {
-#if defined(HAVE_TIMEGM)
 	if ((t = pg_mktime(&buf, timezone_utc())) != -1)
 	    return t;
-#ifdef NEGATIVE_TIME_T
+
 	if ((tmp = GMTIME(&t, result)) &&
 	    tptr->tm_year == tmp->tm_year &&
 	    tptr->tm_mon == tmp->tm_mon &&
@@ -910,15 +897,11 @@ make_time_t(struct pg_tm *tptr, struct pg_tz *tz, int utc_p)
 	    tptr->tm_sec == tmp->tm_sec
 	)
 	    return t;
-#endif
-#endif
 	return search_time_t(&buf, utc_p);
     }
     else {
-#if defined(HAVE_MKTIME)
 	if ((t = pg_mktime(&buf, tz)) != -1)
 	    return t;
-#ifdef NEGATIVE_TIME_T
 	if ((tmp = LOCALTIME(&t, result)) &&
 	    tptr->tm_year == tmp->tm_year &&
 	    tptr->tm_mon == tmp->tm_mon &&
@@ -928,8 +911,7 @@ make_time_t(struct pg_tm *tptr, struct pg_tz *tz, int utc_p)
 	    tptr->tm_sec == tmp->tm_sec
 	)
             return t;
-#endif
-#endif
+
 	return search_time_t(&buf, utc_p);
     }
 }

@@ -1453,9 +1453,8 @@ int	delta;
 }
 
 static int
-pg_long_increment_overflow(number, delta)
-long *	number;
-int	delta;
+pg_long_increment_overflow(long *	number
+			   int	delta)
 {
 	long	number0;
 
@@ -1465,10 +1464,9 @@ int	delta;
 }
 
 static int
-pg_normalize_overflow(tensptr, unitsptr, base)
-int * const	tensptr;
-int * const	unitsptr;
-const int	base;
+pg_normalize_overflow(int * const	tensptr,
+		      int * const	unitsptr,
+		      const int	base)
 {
 	register int	tensdelta;
 
@@ -1480,10 +1478,9 @@ const int	base;
 }
 
 static int
-pg_long_normalize_overflow(tensptr, unitsptr, base)
-long * const	tensptr;
-int * const	unitsptr;
-const int	base;
+pg_long_normalize_overflow(long * const	tensptr,
+			   int * const	unitsptr,
+			   const int	base)
 {
 	register int	tensdelta;
 
@@ -1523,8 +1520,8 @@ const pg_tz *tz)
 	register int			i, j;
 	register int			saved_seconds;
 	register long			li;
-	register time_t			lo;
-	register time_t			hi;
+	register pg_time_t			lo;
+	register pg_time_t			hi;
 	long				y;
 	pg_time_t				newt;
 	pg_time_t				t;
@@ -1600,17 +1597,17 @@ const pg_tz *tz)
 	/*
 	** Do a binary search (this works whatever time_t's type is).
 	*/
-	if (!TYPE_SIGNED(time_t)) {
+	if (!TYPE_SIGNED(pg_time_t)) {
 		lo = 0;
 		hi = lo - 1;
-	} else if (!TYPE_INTEGRAL(time_t)) {
-		if (sizeof(time_t) > sizeof(float))
-			hi = (time_t) DBL_MAX;
-		else	hi = (time_t) FLT_MAX;
+	} else if (!TYPE_INTEGRAL(pg_time_t)) {
+		if (sizeof(pg_time_t) > sizeof(float))
+			hi = (pg_time_t) DBL_MAX;
+		else	hi = (ps_time_t) FLT_MAX;
 		lo = -hi;
 	} else {
 		lo = 1;
-		for (i = 0; i < (int) TYPE_BIT(time_t) - 1; ++i)
+		for (i = 0; i < (int) TYPE_BIT(pg_time_t) - 1; ++i)
 			lo *= 2;
 		hi = -(lo + 1);
 	}
