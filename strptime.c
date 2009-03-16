@@ -493,7 +493,21 @@ label:
 			pg_localtime_r(&t, tz, tm);
 			}
 			break;
+		case 'N':
+		    {
+			char *cp;
+			int sverrno;
 
+			sverrno = errno;
+			errno = 0;
+			*nsec = strtol(buf, &cp, 10);
+			if (errno != 0) {
+				errno = sverrno;
+				return 0;
+			}
+			buf = cp;
+		    }
+			break;
 		case 'Y':
 		case 'y':
 			if (*buf == 0 || isspace((unsigned char)*buf))

@@ -68,27 +68,27 @@ class TestDateStrptime < Test::Unit::TestCase
   def test__strptime
     STRFTIME_2001_02_03.each do |f, s|
       if (f == '%I' and s[0] == '12') or
-	 (f == '%l' and s[0] == '12') # hour w/o merid
-	s[1][:hour] = 12
+          (f == '%l' and s[0] == '12') # hour w/o merid
+        s[1][:hour] = 12
       end
       assert_equal(s[1], Date._strptime(s[0], f), [f, s].inspect)
       case f[-1,1]
       when 'c', 'C', 'x', 'X', 'y', 'Y'
-	f2 = f.sub(/\A%/, '%E')
-	assert_equal(s[1], Date._strptime(s[0], f2), [f2, s].inspect)
+        f2 = f.sub(/\A%/, '%E')
+        assert_equal(s[1], Date._strptime(s[0], f2), [f2, s].inspect)
       else
-	f2 = f.sub(/\A%/, '%E')
-	assert_equal(nil, Date._strptime(s[0], f2), [f2, s].inspect)
-	assert_equal({}, Date._strptime(f2, f2), [f2, s].inspect)
+        f2 = f.sub(/\A%/, '%E')
+        assert_equal(nil, Date._strptime(s[0], f2), [f2, s].inspect)
+        assert_equal({}, Date._strptime(f2, f2), [f2, s].inspect)
       end
       case f[-1,1]
       when 'd', 'e', 'H', 'I', 'm', 'M', 'S', 'u', 'U', 'V', 'w', 'W', 'y'
-	f2 = f.sub(/\A%/, '%O')
-	assert_equal(s[1], Date._strptime(s[0], f2), [f2, s].inspect)
+        f2 = f.sub(/\A%/, '%O')
+        assert_equal(s[1], Date._strptime(s[0], f2), [f2, s].inspect)
       else
-	f2 = f.sub(/\A%/, '%O')
-	assert_equal(nil, Date._strptime(s[0], f2), [f2, s].inspect)
-	assert_equal({}, Date._strptime(f2, f2), [f2, s].inspect)
+        f2 = f.sub(/\A%/, '%O')
+        assert_equal(nil, Date._strptime(s[0], f2), [f2, s].inspect)
+        assert_equal({}, Date._strptime(f2, f2), [f2, s].inspect)
       end
     end
   end
@@ -343,17 +343,17 @@ class TestDateStrptime < Test::Unit::TestCase
 
       [
        '%Y %m %d %H %M %S',
-#     '%Y %m %d %H %M %S %N',
+       '%Y %m %d %H %M %S %N',
        '%C %y %m %d %H %M %S',
-#      '%C %y %m %d %H %M %S %N',
+       '%C %y %m %d %H %M %S %N',
 
        '%Y %j %H %M %S',
-#       '%Y %j %H %M %S %N',
+       '%Y %j %H %M %S %N',
        '%C %y %j %H %M %S',
-#       '%C %y %j %H %M %S %N',
+       '%C %y %j %H %M %S %N',
 
        '%s',
-#       '%s %N',
+       '%s %N',
 #       '%Q',
 #       '%Q %N',
       ].each do |fmt|
