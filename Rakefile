@@ -27,6 +27,12 @@ task :vscp do
   end
 end
 
+desc "run benchmarks"
+task :bench do
+  ruby "test/benchmark/bench_tz.rb"
+  ruby "test/benchmark/bench_strptime.rb"
+end
+
 time2_dir = "ext/time2/"
 time2_so = "#{time2_dir}time2.#{Config::CONFIG['DLEXT']}"
 time2_files = FileList[
