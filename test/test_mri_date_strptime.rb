@@ -286,27 +286,27 @@ class TestDateStrptime < Test::Unit::TestCase
     assert_nil(Date._strptime('Sundai,', '%A,'))
     assert_nil(Date._strptime('Januari,', '%B,'))
   end
-
-  def test_strptime
-    assert_equal(Date.new, Date.strptime)
-    d = Date.new(2002,3,14)
-    assert_equal(d, Date.strptime(d.to_s))
-    assert_equal(Date.new(2002,3,14), Date.strptime('2002-03-14'))
-
-    d = DateTime.new(2002,3,14,11,22,33, 0)
-    assert_equal(d, DateTime.strptime(d.to_s))
-    assert_equal(DateTime.new(2002,3,14,11,22,33, 0),
-		 DateTime.strptime('2002-03-14T11:22:33Z'))
-    assert_equal(DateTime.new(2002,3,14,11,22,33, 0),
-		 DateTime.strptime('2002-03-14T11:22:33Z', '%Y-%m-%dT%H:%M:%S%Z'))
-    assert_equal(DateTime.new(2002,3,14,11,22,33, 9.to_r/24),
-		 DateTime.strptime('2002-03-14T11:22:33+09:00', '%Y-%m-%dT%H:%M:%S%Z'))
-    assert_equal(DateTime.new(2002,3,14,11,22,33, -9.to_r/24),
-		 DateTime.strptime('2002-03-14T11:22:33-09:00', '%FT%T%Z'))
-    assert_equal(DateTime.new(2002,3,14,11,22,33, -9.to_r/24) + 123456789.to_r/1000000000/86400,
-		 DateTime.strptime('2002-03-14T11:22:33.123456789-09:00', '%FT%T.%N%Z'))
-  end
 =end
+  def test_strptime
+    # assert_equal(Date.new, Date.strptime)
+#     d = Date.new(2002,3,14)
+#     assert_equal(d, Date.strptime(d.to_s))
+#     assert_equal(Date.new(2002,3,14), Date.strptime('2002-03-14'))
+
+#     d = DateTime.new(2002,3,14,11,22,33, 0)
+#     assert_equal(d, DateTime.strptime(d.to_s))
+#    assert_equal(DateTime.new(2002,3,14,11,22,33, 0),
+#		 DateTime.strptime('2002-03-14T11:22:33Z'))
+     assert_equal(Time.utc(2002,3,14,11,22,33),
+                  Time.strptime('2002-03-14T11:22:33Z', '%Y-%m-%dT%H:%M:%S%Z'))
+#     assert_equal(Time.utc(2002,3,14,11,22,33, 9.to_r/24),
+#                  Time.strptime('2002-03-14T11:22:33+09:00', '%Y-%m-%dT%H:%M:%S%Z'))
+#     assert_equal(DateTime.new(2002,3,14,11,22,33, -9.to_r/24),
+# 		 DateTime.strptime('2002-03-14T11:22:33-09:00', '%FT%T%Z'))
+#     assert_equal(DateTime.new(2002,3,14,11,22,33, -9.to_r/24) + 123456789.to_r/1000000000/86400,
+# 		 DateTime.strptime('2002-03-14T11:22:33.123456789-09:00', '%FT%T.%N%Z'))
+  end
+
   def test_strptime__2
     n = 10**9
     init_tz = Time::Zone.default

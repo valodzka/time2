@@ -546,8 +546,10 @@ label:
 				strncpy(zonestr, buf, TZ_STRLEN_MAX);
 				zonestr[TZ_STRLEN_MAX] = '\0';
 				// TODO: normal implementation
-				if (0 == strcmp(zonestr, "GMT")) {
-				  tm->tm_zone = "GMT";
+				if (0 == strcmp(zonestr, "GMT") || 
+					0 == strcmp(zonestr, "Z") || 
+					0 == strcmp(zonestr, "UTC")) {
+					tm->tm_zone = "GMT";
 				}
 				else {
 				  rb_notimplement();
