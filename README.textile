@@ -3,10 +3,11 @@ h2. New Ruby Time implementation
 h3. The radical solution to ruby Time class problems
 
 Ruby Time class is the one of the most disappointment parts of the ruby standard library.
-It "can't handle time zones":http://michaelbuffington.com/2006/10/11/i-heap-scorn-upon-rubys-time-class/ by design (although some methods accept time zone as a parameter) and this can't be changed by "third party libraries":http://tzinfo.rubyforge.org (except via creating a new class (as "Rails does":http://api.rubyonrails.org/classes/ActiveSupport/TimeWithZone.html)).
-Also it has pure ruby implementation of time parsing method, which is "awfully slow":http://scie.nti.st/2007/11/28/ruby-vs-python-date-parsing-am-i-doing-somethin-wrong. 
+* It "can't handle time zones":http://michaelbuffington.com/2006/10/11/i-heap-scorn-upon-rubys-time-class/ by design (although some methods accept time zone as a parameter) and this can't be changed by "third party libraries":http://tzinfo.rubyforge.org (except via creating a new class (as "Rails does":http://api.rubyonrails.org/classes/ActiveSupport/TimeWithZone.html)).
+* It has pure ruby implementation of time parsing method, which is "awfully slow":http://scie.nti.st/2007/11/28/ruby-vs-python-date-parsing-am-i-doing-somethin-wrong.
+* It has a couple of "non-portable features":http://www.ruby-doc.org/core/classes/Time.src/M000250.html, because havy depend from underluing system libraries. On Windows, for example, you can't create time before UNIX epoch (i.e. 1970).
 
-Project tries to radically solve this problems. First of all, it adds full platform independent time zone support (including full tz database, transition between time zones, dst) and fast implementation of the <code>strptime</code> method. 
+Project tries to radically solve this problems. It adds platform independent (and therefore portable) time functions, inсluding full time zone support (full tz database, transition between time zones, dst) and fast implementation of the <code>strptime</code> method. Functions which return current system time it is the only functions from which the library depends.
 
 Library will be distributed as a gem when become production ready, but I hope this code will be included in ruby core.
 
@@ -107,7 +108,7 @@ Benchmark.bm{|b|
 
 h3. Portability
 
-Code tested on Debian Etch with GCC, should also work on Windows with Visual C++ 2008 (small modifications might be required) 
+Code tested on Debian Etch with GCC, should also work on Windows with VC 9 (small modifications might be required) 
 
 h3. TODO
 
