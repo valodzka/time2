@@ -5,10 +5,7 @@
  * This file is in the public domain, so clarified as of
  * 1996-06-05 by Arthur David Olson.
  *
- * IDENTIFICATION
- *	  $PostgreSQL$
  */
-
 /*
  * This header is for use ONLY with the time conversion code.
  * There is no guarantee that it will remain unchanged,

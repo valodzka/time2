@@ -5,14 +5,11 @@
  *
  * Portions Copyright (c) 1996-2009, PostgreSQL Global Development Group
  *
- * IDENTIFICATION
- *	  $PostgreSQL$
  *
  *-------------------------------------------------------------------------
  */
 #ifndef _PGTIME_H
 #define _PGTIME_H
-
 
 /*
  * The API of this library is generally similar to the corresponding

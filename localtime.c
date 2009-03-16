@@ -2,16 +2,11 @@
  * This file is in the public domain, so clarified as of
  * 1996-06-05 by Arthur David Olson.
  *
- * IDENTIFICATION
- *	  $PostgreSQL$
  */
-
 /*
  * Leap second handling from Bradley White.
  * POSIX-style TZ environment variable handling from Guy Harris.
  */
-
-/* this file needs to build in both frontend and backend contexts */
 #include "c.h"
 
 #include <fcntl.h>
