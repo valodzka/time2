@@ -108,7 +108,7 @@ Benchmark.bm{|b|
 
 h3. Portability
 
-Code tested on Debian Etch with GCC, should also work on Windows with VC 9 (small modifications might be required) 
+Code tested on Debian Etch with GCC 4.3.3 and Windows with VC 9
 
 h3. TODO
 

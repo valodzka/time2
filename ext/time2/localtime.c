@@ -1453,8 +1453,7 @@ int	delta;
 }
 
 static int
-pg_long_increment_overflow(long *	number
-			   int	delta)
+pg_long_increment_overflow(long *	number, int	delta)
 {
 	long	number0;
 
@@ -1603,7 +1602,7 @@ const pg_tz *tz)
 	} else if (!TYPE_INTEGRAL(pg_time_t)) {
 		if (sizeof(pg_time_t) > sizeof(float))
 			hi = (pg_time_t) DBL_MAX;
-		else	hi = (ps_time_t) FLT_MAX;
+		else	hi = (pg_time_t) FLT_MAX;
 		lo = -hi;
 	} else {
 		lo = 1;
