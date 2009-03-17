@@ -33,9 +33,6 @@
 # define TYPEOF_TIMEVAL_TV_SEC time_t
 #endif
 
-#define NEGATIVE_TIME_T 1
-#define HAVE_TIMEGM     1
-
 VALUE rb_cTime;
 VALUE rb_cTimeZone;
 
@@ -47,27 +44,38 @@ static struct pg_tz* timezone_cached_get(const char *name);
 static ID id_divmod, id_mul, id_submicro;
 
 struct time_object {
-	struct timespec ts;
+    struct timespec ts;
     struct pg_tm tm;
     int gmt;
     int tm_got;
-	struct pg_tz const * tz;
+    struct pg_tz const * tz;
 };
 
-#define OLD_TIME_COMPAT 1
-
 #ifdef OLD_TIME_COMPAT
+
+struct old_time_object {
+    struct timespec ts;
+    struct tm tm;
+    int gmt;
+    int tm_got;
+};
+
 static void (*time_free)(void *) = NULL;
 
 #  define IS_GMT(tobj) \
-    (((tobj)->gmt <= 1)?(rb_bug("time2:old style gmt"),0):(((tobj)->gmt-100)))
-#  define GMT_TRUE(tobj)  ((tobj)->gmt = 101)
-#  define GMT_FALSE(tobj)  ((tobj)->gmt = 100)
-#  define GetTimeval(obj, tobj) do {								  \
-		Data_Get_Struct(obj, struct time_object, tobj);				  \
-		if((tobj)->gmt <= 1)										  \
-			tobj = time_from_old_format(&(obj),(tobj));				  \
-	}while(0)
+    (((tobj)->gmt > INT_MIN+1)?(rb_bug("time2:old style gmt"),0):(((tobj)->gmt-INT_MIN)))
+#  define GMT_TRUE(tobj)  ((tobj)->gmt = INT_MIN+1)
+#  define GMT_FALSE(tobj)  ((tobj)->gmt = INT_MIN)
+#  define GetTimeval(obj, tobj) do {					\
+	if(TYPE(obj) == T_DATA && RDATA(obj)->dmark != time_mark) {	\
+	    struct old_time_object *old_tobj =				\
+		(struct old_time_object *)DATA_PTR(obj);		\
+	    tobj = time_from_old_format(&(obj),(old_tobj));		\
+	}								\
+	else {								\
+	    Data_Get_Struct(obj, struct time_object, tobj);		\
+	}								\
+    }while(0)
 #  define IS_BIN_TIME(t) ((TYPE(t) == T_DATA) && ((RDATA(t)->dfree == time_free)))
 #else
 #  define IS_GMT(obj) ((tobj)->gmt)
@@ -93,6 +101,13 @@ time_free(void *tobj)
 {
     if (tobj) xfree(tobj);
 }
+#else
+
+static void
+time_mark(void *p)
+{
+}
+ 
 #endif
 
 static VALUE
@@ -100,16 +115,21 @@ time_s_alloc(VALUE klass)
 {
     VALUE obj;
     struct time_object *tobj;
-
+#ifdef OLD_TIME_COMPAT
+    obj = Data_Make_Struct(klass, struct time_object, time_mark, time_free, tobj);
+#else
     obj = Data_Make_Struct(klass, struct time_object, 0, time_free, tobj);
+#endif
     tobj->tm_got=0;
+    tobj->gmt=INT_MIN;
     tobj->ts.tv_sec = 0;
     tobj->ts.tv_nsec = 0;
     return obj;
 }
 
+#ifdef OLD_TIME_COMPAT
 static struct time_object *
-time_from_old_format(VALUE *obj, struct time_object *old_tobj)
+time_from_old_format(VALUE *obj, struct old_time_object *old_tobj)
 {
 	struct time_object *tobj;
 
@@ -118,7 +138,7 @@ time_from_old_format(VALUE *obj, struct time_object *old_tobj)
 
 	tobj->ts = old_tobj->ts;
 	tobj->tm_got = 0;
-	tobj->gmt = old_tobj->gmt + 100;
+	tobj->gmt = old_tobj->gmt + INT_MIN;
 	tobj->tz = timezone_default(NULL);
 
 	xfree(old_tobj);
@@ -128,6 +148,7 @@ time_from_old_format(VALUE *obj, struct time_object *old_tobj)
 
 	return tobj;
 }
+#endif
 
 static void
 time_modify(VALUE time)
@@ -677,11 +698,7 @@ search_time_t(struct pg_tm *tptr, int utc_p)
 
     find_dst = 0 < tptr->tm_isdst;
 
-#ifdef NEGATIVE_TIME_T
     guess_lo = (time_t)~((unsigned_time_t)~(time_t)0 >> 1);
-#else
-    guess_lo = 0;
-#endif
     guess_hi = ((time_t)-1) < ((time_t)0) ?
 	       (time_t)((unsigned_time_t)~(time_t)0 >> 1) :
 	       ~(time_t)0;
@@ -1540,11 +1557,12 @@ time_to_s(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-		time_get_tm(time, IS_GMT(tobj));
+	time_get_tm(time, IS_GMT(tobj));
     }
-	RB_STRFTIME(buf, sizeof(buf),
-				IS_GMT(tobj) ? "%Y-%m-%d %H:%M:%S UTC" : "%Y-%m-%d %H:%M:%S %z",
-				&tobj->tm, &tobj->ts, IS_GMT(tobj), len);
+
+    RB_STRFTIME(buf, sizeof(buf),
+		IS_GMT(tobj) ? "%Y-%m-%d %H:%M:%S UTC" : "%Y-%m-%d %H:%M:%S %z",
+		&tobj->tm, &tobj->ts, IS_GMT(tobj), len);
 
     return rb_str_new(buf, len);
 }
