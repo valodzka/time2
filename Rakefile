@@ -29,6 +29,7 @@ end
 
 desc "run benchmarks"
 task :bench do
+  ruby "--version"
   ruby "test/benchmark/bench_tz.rb"
   ruby "test/benchmark/bench_strptime.rb"
 end

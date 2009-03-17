@@ -47,30 +47,53 @@ static struct pg_tz* timezone_cached_get(const char *name);
 static ID id_divmod, id_mul, id_submicro;
 
 struct time_object {
-    struct timespec ts;
+	struct timespec ts;
     struct pg_tm tm;
-    struct pg_tz const * tz;
     int gmt;
     int tm_got;
+	struct pg_tz const * tz;
 };
 
-#define GetTimeval(obj, tobj) \
-    Data_Get_Struct(obj, struct time_object, tobj)
+#define OLD_TIME_COMPAT 1
+
+#ifdef OLD_TIME_COMPAT
+static void (*time_free)(void *) = NULL;
+
+#  define IS_GMT(tobj) \
+    (((tobj)->gmt <= 1)?(rb_bug("time2:old style gmt"),0):(((tobj)->gmt-100)))
+#  define GMT_TRUE(tobj)  ((tobj)->gmt = 101)
+#  define GMT_FALSE(tobj)  ((tobj)->gmt = 100)
+#  define GetTimeval(obj, tobj) do {								  \
+		Data_Get_Struct(obj, struct time_object, tobj);				  \
+		if((tobj)->gmt <= 1)										  \
+			tobj = time_from_old_format(&(obj),(tobj));				  \
+	}while(0)
+#  define IS_BIN_TIME(t) ((TYPE(t) == T_DATA) && ((RDATA(t)->dfree == time_free)))
+#else
+#  define IS_GMT(obj) ((tobj)->gmt)
+#  define GMT_TRUE(tobj)  ((tobj)->gmt = 1)
+#  define GMT_FALSE(tobj)  ((tobj)->gmt = 0)
+#  define GetTimeval(obj, tobj) \
+     Data_Get_Struct(obj, struct time_object, tobj)
+#  define IS_BIN_TIME(t) TYPE(t) == T_DATA && RDATA(t)->dfree == time_free
+#endif
+
 #define GetTZval(obj, tobj) \
     Data_Get_Struct(obj, struct pg_tz, tobj)
-#define GetOrInitTZ(obj, tobj) \
-   do {                                                    \
+#define GetOrInitTZ(obj, tobj) do {                        \
     if (RTEST(rb_obj_is_kind_of(obj, rb_cTimeZone)))       \
         GetTZval(obj, tobj);                               \
      else                                                  \
         tobj = timezone_cached_get(StringValueCStr(obj));  \
    } while(0)
 
+#ifndef OLD_TIME_COMPAT
 static void
 time_free(void *tobj)
 {
     if (tobj) xfree(tobj);
 }
+#endif
 
 static VALUE
 time_s_alloc(VALUE klass)
@@ -82,8 +105,28 @@ time_s_alloc(VALUE klass)
     tobj->tm_got=0;
     tobj->ts.tv_sec = 0;
     tobj->ts.tv_nsec = 0;
-
     return obj;
+}
+
+static struct time_object *
+time_from_old_format(VALUE *obj, struct time_object *old_tobj)
+{
+	struct time_object *tobj;
+
+	tobj = ALLOC(struct time_object);
+	MEMZERO(tobj, struct time_object, 1);
+
+	tobj->ts = old_tobj->ts;
+	tobj->tm_got = 0;
+	tobj->gmt = old_tobj->gmt + 100;
+	tobj->tz = timezone_default(NULL);
+
+	xfree(old_tobj);
+	DATA_PTR(*obj) = tobj;
+	RDATA(*obj)->dfree = time_free;
+	RBASIC(RDATA(*obj))->klass = rb_cTime;
+
+	return tobj;
 }
 
 static void
@@ -224,40 +267,40 @@ time_timespec(VALUE num, int interval)
     VALUE i, f, ary;
 
     switch (TYPE(num)) {
-      case T_FIXNUM:
-	t.tv_sec = FIX2LONG(num);
-	if (interval && t.tv_sec < 0)
-	    rb_raise(rb_eArgError, "%s must be positive", tstr);
-	t.tv_nsec = 0;
-	break;
+	case T_FIXNUM:
+		t.tv_sec = FIX2LONG(num);
+		if (interval && t.tv_sec < 0)
+			rb_raise(rb_eArgError, "%s must be positive", tstr);
+		t.tv_nsec = 0;
+		break;
 
-      case T_FLOAT:
-	if (interval && RFLOAT_VALUE(num) < 0.0)
-	    rb_raise(rb_eArgError, "%s must be positive", tstr);
-	else {
-	    double f, d;
+	case T_FLOAT:
+		if (interval && RFLOAT_VALUE(num) < 0.0)
+			rb_raise(rb_eArgError, "%s must be positive", tstr);
+		else {
+			double f, d;
 
-	    d = modf(RFLOAT_VALUE(num), &f);
+			d = modf(RFLOAT_VALUE(num), &f);
             if (d < 0) {
                 d += 1;
                 f -= 1;
             }
-	    t.tv_sec = (pg_time_t)f;
-	    if (f != t.tv_sec) {
-		rb_raise(rb_eRangeError, "%f out of Time range", RFLOAT_VALUE(num));
-	    }
-	    t.tv_nsec = (long)(d*1e9+0.5);
-	}
-	break;
+			t.tv_sec = (pg_time_t)f;
+			if (f != t.tv_sec) {
+				rb_raise(rb_eRangeError, "%f out of Time range", RFLOAT_VALUE(num));
+			}
+			t.tv_nsec = (long)(d*1e9+0.5);
+		}
+		break;
 
-      case T_BIGNUM:
-	t.tv_sec = NUM2LONG(num);
-	if (interval && t.tv_sec < 0)
-	    rb_raise(rb_eArgError, "%s must be positive", tstr);
-	t.tv_nsec = 0;
-	break;
+	case T_BIGNUM:
+		t.tv_sec = NUM2LONG(num);
+		if (interval && t.tv_sec < 0)
+			rb_raise(rb_eArgError, "%s must be positive", tstr);
+		t.tv_nsec = 0;
+		break;
 
-      default:
+	default:
         if (rb_respond_to(num, id_divmod)) {
             ary = rb_check_array_type(rb_funcall(num, id_divmod, 1, INT2FIX(1)));
             if (NIL_P(ary)) {
@@ -276,7 +319,7 @@ typeerror:
             rb_raise(rb_eTypeError, "can't convert %s into %s",
                      rb_obj_classname(num), tstr);
         }
-	break;
+		break;
     }
     return t;
 }
@@ -306,7 +349,7 @@ rb_time_timeval(VALUE time)
     struct time_object *tobj;
     struct timeval t;
 
-    if (TYPE(time) == T_DATA && RDATA(time)->dfree == time_free) {
+    if (IS_BIN_TIME(time)) {
 	  GetTimeval(time, tobj);
 	  t.tv_sec = (TYPEOF_TIMEVAL_TV_SEC)tobj->ts.tv_sec;
 	  t.tv_usec = tobj->ts.tv_nsec / 1000;
@@ -321,7 +364,7 @@ rb_time_timespec_static(VALUE time)
     struct time_object *tobj;
     struct timespec t;
 
-    if (TYPE(time) == T_DATA && RDATA(time)->dfree == time_free) {
+    if (IS_BIN_TIME(time)) {
 	  GetTimeval(time, tobj);
 	  t = tobj->ts;
 	  return t;
@@ -369,12 +412,14 @@ time_s_at(int argc, VALUE *argv, VALUE klass)
 	  ts = rb_time_timespec_static(time);
     }
     t = time_new_internal(klass, ts.tv_sec, ts.tv_nsec, timezone_default(NULL));
-    if (TYPE(time) == T_DATA && RDATA(time)->dfree == time_free) {
-	struct time_object *tobj, *tobj2;
+    if (IS_BIN_TIME(time)) {
+		struct time_object *tobj, *tobj2;
 
-	GetTimeval(time, tobj);
-	GetTimeval(t, tobj2);
-	tobj2->gmt = tobj->gmt;
+		GetTimeval(time, tobj);
+		GetTimeval(t, tobj2);
+		if(IS_GMT(tobj)) GMT_TRUE(tobj2);
+		else GMT_FALSE(tobj2);
+
     }
     return t;
 }
@@ -882,7 +927,7 @@ make_time_t(struct pg_tm *tptr, struct pg_tz *tz, int utc_p)
     struct pg_tm *tmp;
     struct pg_tm buf;
     struct pg_tm result;
-    
+
     buf = *tptr;
     if (utc_p) {
 	if ((t = pg_mktime(&buf, timezone_utc())) != -1)
@@ -1122,27 +1167,27 @@ time_cmp(VALUE time1, VALUE time2)
     struct time_object *tobj1, *tobj2;
 
     GetTimeval(time1, tobj1);
-    if (TYPE(time2) == T_DATA && RDATA(time2)->dfree == time_free) {
-	GetTimeval(time2, tobj2);
-	if (tobj1->ts.tv_sec == tobj2->ts.tv_sec) {
-	    if (tobj1->ts.tv_nsec == tobj2->ts.tv_nsec) return INT2FIX(0);
-	    if (tobj1->ts.tv_nsec > tobj2->ts.tv_nsec) return INT2FIX(1);
-	    return INT2FIX(-1);
-	}
-	if (tobj1->ts.tv_sec > tobj2->ts.tv_sec) return INT2FIX(1);
-	return INT2FIX(-1);
+    if (IS_BIN_TIME(time2)) {
+		GetTimeval(time2, tobj2);
+		if (tobj1->ts.tv_sec == tobj2->ts.tv_sec) {
+			if (tobj1->ts.tv_nsec == tobj2->ts.tv_nsec) return INT2FIX(0);
+			if (tobj1->ts.tv_nsec > tobj2->ts.tv_nsec) return INT2FIX(1);
+			return INT2FIX(-1);
+		}
+		if (tobj1->ts.tv_sec > tobj2->ts.tv_sec) return INT2FIX(1);
+		return INT2FIX(-1);
     }
     else {
-	VALUE cmp;
-	int n;
+		VALUE cmp;
+		int n;
 
-	cmp = rb_funcall(time2, rb_intern("<=>"), 1, time1);
-	if (NIL_P(cmp)) return Qnil;
+		cmp = rb_funcall(time2, rb_intern("<=>"), 1, time1);
+		if (NIL_P(cmp)) return Qnil;
 
-	n = rb_cmpint(cmp, time1, time2);
-	if (n == 0) return INT2FIX(0);
-	if (n > 0) return INT2FIX(1);
-	return INT2FIX(-1);
+		n = rb_cmpint(cmp, time1, time2);
+		if (n == 0) return INT2FIX(0);
+		if (n > 0) return INT2FIX(1);
+		return INT2FIX(-1);
     }
 }
 
@@ -1161,8 +1206,8 @@ time_eql(VALUE time1, VALUE time2)
     struct time_object *tobj1, *tobj2;
 
     GetTimeval(time1, tobj1);
-    if (TYPE(time2) == T_DATA && RDATA(time2)->dfree == time_free) {
-	GetTimeval(time2, tobj2);
+    if (IS_BIN_TIME(time2)) {
+		GetTimeval(time2, tobj2);
 	if (tobj1->ts.tv_sec == tobj2->ts.tv_sec) {
 	    if (tobj1->ts.tv_nsec == tobj2->ts.tv_nsec) return Qtrue;
 	}
@@ -1195,8 +1240,7 @@ time_utc_p(VALUE time)
     struct time_object *tobj;
 
     GetTimeval(time, tobj);
-    if (tobj->gmt) return Qtrue;
-    return Qfalse;
+    return IS_GMT(tobj) ? Qtrue : Qfalse;
 }
 
 /*
@@ -1240,8 +1284,8 @@ time_init_copy(VALUE copy, VALUE time)
 
     if (copy == time) return copy;
     time_modify(copy);
-    if (TYPE(time) != T_DATA || RDATA(time)->dfree != time_free) {
-	rb_raise(rb_eTypeError, "wrong argument type");
+    if (!IS_BIN_TIME(time)) {
+		rb_raise(rb_eTypeError, "wrong argument type");
     }
     GetTimeval(time, tobj);
     GetTimeval(copy, tcopy);
@@ -1268,7 +1312,7 @@ time_localtime_with_tz(VALUE time, struct pg_tz const * tz)
 
     GetTimeval(time, tobj);
 
-    if (!tobj->gmt) {
+    if (!IS_GMT(tobj)) {
 	if (tobj->tm_got && tobj->tz == tz)
 	    return time;
     }
@@ -1281,7 +1325,7 @@ time_localtime_with_tz(VALUE time, struct pg_tz const * tz)
     tobj->tm = *tm_tmp;
     tobj->tz = tz;
     tobj->tm_got = 1;
-    tobj->gmt = 0;
+    GMT_FALSE(tobj);
     return time;
 }
 
@@ -1303,7 +1347,7 @@ time_localtime(int argc, VALUE *argv, VALUE time)
 {
     VALUE tzobj;
     struct pg_tz* tz;
-    
+
     if(rb_scan_args(argc, argv, "01", &tzobj)==0)
         tz = timezone_default(NULL);
     else {
@@ -1340,12 +1384,12 @@ time_gmtime(VALUE time)
     struct pg_tm result;
 
     GetTimeval(time, tobj);
-    if (tobj->gmt) {
-	if (tobj->tm_got)
-	    return time;
+    if (IS_GMT(tobj)) {
+		if (tobj->tm_got)
+			return time;
     }
     else {
-	time_modify(time);
+		time_modify(time);
     }
     t = tobj->ts.tv_sec;
     tm_tmp = GMTIME(&t, result);
@@ -1353,7 +1397,7 @@ time_gmtime(VALUE time)
 	rb_raise(rb_eArgError, "gmtime error");
     tobj->tm = *tm_tmp;
     tobj->tm_got = 1;
-    tobj->gmt = 1;
+    GMT_TRUE(tobj);
     return time;
 }
 
@@ -1428,7 +1472,7 @@ time_asctime(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     s = pg_asctime_r(&tobj->tm, buf);
     if(!s) rb_sys_fail("asctime");
@@ -1496,16 +1540,12 @@ time_to_s(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
-    if (tobj->gmt == 1) {
-	RB_STRFTIME(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S UTC",
-			  &tobj->tm, &tobj->ts, tobj->gmt, len);
-    }
-    else {
-	RB_STRFTIME(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S %z",
-			  &tobj->tm, &tobj->ts, tobj->gmt, len);
-    }
+	RB_STRFTIME(buf, sizeof(buf),
+				IS_GMT(tobj) ? "%Y-%m-%d %H:%M:%S UTC" : "%Y-%m-%d %H:%M:%S %z",
+				&tobj->tm, &tobj->ts, IS_GMT(tobj), len);
+
     return rb_str_new(buf, len);
 }
 
@@ -1543,9 +1583,9 @@ time_add(struct time_object *tobj, VALUE offset, int sign)
 	    rb_raise(rb_eRangeError, "time + %f out of Time range", v);
     }
     result = rb_time_with_tz_nano_new(sec, nsec, tobj->tz);
-    if (tobj->gmt) {
-	GetTimeval(result, tobj);
-	tobj->gmt = 1;
+    if (IS_GMT(tobj)) {
+		GetTimeval(result, tobj);
+		GMT_TRUE(tobj);
     }
     return result;
 }
@@ -1567,8 +1607,8 @@ time_plus(VALUE time1, VALUE time2)
     struct time_object *tobj;
     GetTimeval(time1, tobj);
 
-    if (TYPE(time2) == T_DATA && RDATA(time2)->dfree == time_free) {
-	rb_raise(rb_eTypeError, "time + time?");
+    if (IS_BIN_TIME(time2)) {
+		rb_raise(rb_eTypeError, "time + time?");
     }
     return time_add(tobj, time2, 1);
 }
@@ -1594,18 +1634,18 @@ time_minus(VALUE time1, VALUE time2)
     struct time_object *tobj;
 
     GetTimeval(time1, tobj);
-    if (TYPE(time2) == T_DATA && RDATA(time2)->dfree == time_free) {
-	struct time_object *tobj2;
-	double f;
+    if (IS_BIN_TIME(time2)) {
+		struct time_object *tobj2;
+		double f;
 
-	GetTimeval(time2, tobj2);
+		GetTimeval(time2, tobj2);
         if (tobj->ts.tv_sec < tobj2->ts.tv_sec)
             f = -(double)(unsigned_time_t)(tobj2->ts.tv_sec - tobj->ts.tv_sec);
         else
             f = (double)(unsigned_time_t)(tobj->ts.tv_sec - tobj2->ts.tv_sec);
-	f += ((double)tobj->ts.tv_nsec - (double)tobj2->ts.tv_nsec)*1e-9;
+		f += ((double)tobj->ts.tv_nsec - (double)tobj2->ts.tv_nsec)*1e-9;
 
-	return DBL2NUM(f);
+		return DBL2NUM(f);
     }
     return time_add(tobj, time2, -1);
 }
@@ -1627,11 +1667,13 @@ time_succ(VALUE time)
     int gmt;
 
     GetTimeval(time, tobj);
-    gmt = tobj->gmt;
+    gmt = IS_GMT(tobj);
     time = rb_time_with_tz_nano_new(tobj->ts.tv_sec + 1, tobj->ts.tv_nsec, tobj->tz);
     GetTimeval(time, tobj);
-    tobj->gmt = gmt;
-    return time;
+	if (gmt)
+		GMT_TRUE(tobj);
+	else
+		GMT_FALSE(tobj); return time;
 }
 
 VALUE
@@ -1660,7 +1702,7 @@ time_sec(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return INT2FIX(tobj->tm.tm_sec);
 }
@@ -1682,7 +1724,7 @@ time_min(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return INT2FIX(tobj->tm.tm_min);
 }
@@ -1704,7 +1746,7 @@ time_hour(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return INT2FIX(tobj->tm.tm_hour);
 }
@@ -1728,7 +1770,7 @@ time_mday(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return INT2FIX(tobj->tm.tm_mday);
 }
@@ -1752,7 +1794,7 @@ time_mon(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return INT2FIX(tobj->tm.tm_mon+1);
 }
@@ -1774,7 +1816,7 @@ time_year(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return LONG2NUM((long)tobj->tm.tm_year+1900);
 }
@@ -1804,7 +1846,7 @@ time_wday(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return INT2FIX(tobj->tm.tm_wday);
 }
@@ -1813,7 +1855,7 @@ time_wday(VALUE time)
     struct time_object *tobj;\
     GetTimeval(time, tobj);\
     if (tobj->tm_got == 0) {\
-	time_get_tm(time, tobj->gmt);\
+		time_get_tm(time, IS_GMT(tobj));	\
     }\
     return (tobj->tm.tm_wday == (n)) ? Qtrue : Qfalse;\
 }
@@ -1947,7 +1989,7 @@ time_yday(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return INT2FIX(tobj->tm.tm_yday+1);
 }
@@ -1984,7 +2026,7 @@ time_isdst(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return tobj->tm.tm_isdst?Qtrue:Qfalse;
 }
@@ -2009,11 +2051,11 @@ time_zone(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
 
-    if (tobj->gmt == 1) {
-	return rb_str_new2("UTC");
+    if (IS_GMT(tobj)) {
+		return rb_str_new2("UTC");
     }
 
     return rb_str_new2(tobj->tm.tm_zone);
@@ -2041,14 +2083,14 @@ time_utc_offset(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
 
-    if (tobj->gmt == 1) {
-	return INT2FIX(0);
+    if (IS_GMT(tobj)) {
+		return INT2FIX(0);
     }
     else {
-	return INT2NUM(tobj->tm.tm_gmtoff);
+		return INT2NUM(tobj->tm.tm_gmtoff);
     }
 }
 
@@ -2074,7 +2116,7 @@ time_to_a(VALUE time)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     return rb_ary_new3(10,
 		    INT2FIX(tobj->tm.tm_sec),
@@ -2182,7 +2224,7 @@ time_strftime(VALUE time, VALUE format)
 
     GetTimeval(time, tobj);
     if (tobj->tm_got == 0) {
-	time_get_tm(time, tobj->gmt);
+		time_get_tm(time, IS_GMT(tobj));
     }
     StringValue(format);
     if (!rb_enc_str_asciicompat_p(format)) {
@@ -2200,7 +2242,7 @@ time_strftime(VALUE time, VALUE format)
 
 	str = rb_str_new(0, 0);
 	while (p < pe) {
-	    len = rb_strftime_alloc(&buf, p, &tobj->tm, &tobj->ts, tobj->gmt);
+	    len = rb_strftime_alloc(&buf, p, &tobj->tm, &tobj->ts, IS_GMT(tobj));
 	    rb_str_cat(str, buf, len);
 	    p += strlen(p);
 	    if (buf != buffer) {
@@ -2214,7 +2256,7 @@ time_strftime(VALUE time, VALUE format)
     }
     else {
 	len = rb_strftime_alloc(&buf, RSTRING_PTR(format),
-			       	&tobj->tm, &tobj->ts, tobj->gmt);
+							&tobj->tm, &tobj->ts, IS_GMT(tobj));
     }
     str = rb_str_new(buf, len);
     if (buf != buffer) xfree(buf);
@@ -2222,7 +2264,7 @@ time_strftime(VALUE time, VALUE format)
     return str;
 }
 
-static void 
+static void
 time_tm_now(struct pg_tm *tm, struct pg_tz const* tz)
 {
    pg_time_t now = time(NULL);
@@ -2231,7 +2273,7 @@ time_tm_now(struct pg_tm *tm, struct pg_tz const* tz)
 
 static void
 time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
-{  
+{
 	struct pg_tm tm_now;
 
 	if (tm->tm_yday != INT_MIN) {
@@ -2239,7 +2281,7 @@ time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
 			//TODO: add to documentation
 		//rb_warn("Year day redefines month and month day");
 	  }
-	  // mktime will detect appropriate month and day 
+	  // mktime will detect appropriate month and day
 	  tm->tm_mday = tm->tm_yday + 1;
 	  tm->tm_mon = 0;
 	}
@@ -2295,7 +2337,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
     p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec, timezone_default(NULL));
 
     if (!p) rb_raise(rb_eArgError, "strptime error");
-    
+
     if(tm.tm_zone && strcmp("GMT", tm.tm_zone) == 0) {
         tz = timezone_utc();
         utc_p = 1;
@@ -2338,7 +2380,7 @@ time_mdump(VALUE time)
         rb_raise(rb_eArgError, "year too big to marshal: %ld", (long)tm->tm_year);
 
     p = 0x1UL        << 31 | /*  1 */
-	tobj->gmt    << 30 | /*  1 */
+		IS_GMT(tobj)    << 30 | /*  1 */
 	tm->tm_year  << 14 | /* 16 */
 	tm->tm_mon   << 10 | /*  4 */
 	tm->tm_mday  <<  5 | /*  5 */
@@ -2483,7 +2525,10 @@ end_submicro: ;
 
     GetTimeval(time, tobj);
     tobj->tm_got = 0;
-    tobj->gmt = gmt;
+	if (gmt)
+		GMT_TRUE(tobj);
+	else
+		GMT_FALSE(tobj);
     tobj->ts.tv_sec = sec;
     tobj->ts.tv_nsec = nsec;
 
@@ -2510,24 +2555,24 @@ time_load(VALUE klass, VALUE str)
 
 static st_table *tz_cache = NULL;
 
-static struct pg_tz* 
-timezone_cached_get(const char *name) 
+static struct pg_tz*
+timezone_cached_get(const char *name)
 {
     st_data_t key = (st_data_t)name, value = 0;
-    
+
     if(!tz_cache)
         tz_cache = st_init_strcasetable();
-    
+
     st_lookup(tz_cache, key, &value);
-    
+
     if (!value) {
         struct pg_tz* tz = pg_tzset(name);
         if (!tz)
             rb_raise(rb_eRuntimeError, "time zone \"%s\" not found", name);
-        st_insert(tz_cache, (st_data_t)name, (st_data_t)tz);  
+        st_insert(tz_cache, (st_data_t)name, (st_data_t)tz);
         value = (st_data_t)tz;
     }
-    
+
     return (struct pg_tz*)value;
 }
 
@@ -2535,15 +2580,15 @@ static struct pg_tz*
 timezone_utc()
 {
     static struct pg_tz *utc_tz = NULL;
-    
+
     if (!utc_tz)
         utc_tz = timezone_cached_get("UTC");
-    
+
     return utc_tz;
 }
 
 static struct pg_tz*
-timezone_default(struct pg_tz *dflt) 
+timezone_default(struct pg_tz *dflt)
 {
     //TODO:add to cache
     static struct pg_tz* tz = NULL;
@@ -2558,8 +2603,8 @@ timezone_default(struct pg_tz *dflt)
 }
 
 static VALUE
-timezone_get(VALUE klass, VALUE name) 
-{    
+timezone_get(VALUE klass, VALUE name)
+{
    struct pg_tz* tz = timezone_cached_get(StringValueCStr(name));
 
    return Data_Wrap_Struct(klass, 0, 0, tz);
@@ -2569,9 +2614,9 @@ timezone_get(VALUE klass, VALUE name)
 
 static VALUE
 timezone_default_get(VALUE klass)
-{    
+{
     struct pg_tz * default_timezone = timezone_default(NULL);
-    
+
     return Data_Wrap_Struct(klass, 0, 0, default_timezone);
 }
 
@@ -2587,32 +2632,32 @@ timezone_default_set(VALUE klass, VALUE timezone)
 }
 
 static VALUE
-timezone_name(VALUE timezone) 
+timezone_name(VALUE timezone)
 {
     struct pg_tz* tz;
     const char *tz_name;
-    
+
     GetTZval(timezone, tz);
     tz_name = pg_get_timezone_name(tz);
-    
+
     return tz_name ? rb_str_new_cstr(tz_name) : Qnil;
 }
 
-static VALUE 
+static VALUE
 timezone_inspect(VALUE timezone)
 {
     VALUE str = rb_str_buf_new2("#<");
     struct pg_tz* tz;
     const char *tz_name;
-    
+
     GetTZval(timezone, tz);
     tz_name = pg_get_timezone_name(tz);
-    
+
     rb_str_buf_cat2(str, rb_obj_classname(timezone));
     rb_str_buf_cat2(str, ":");
     rb_str_buf_cat2(str, tz_name ? tz_name : "nil");
     rb_str_buf_cat2(str, ">");
-    
+
     return str;
 }
 
@@ -2641,6 +2686,14 @@ Init_time2(void)
 #undef rb_intern
 #define rb_intern(str) rb_intern_const(str)
     VALUE tz_dir = rb_gv_get("$__tz_directory");
+#ifdef OLD_TIME_COMPAT
+	/* Ponter to function time_free used to detect is object is Time
+	   We get this pointer and use it to behave like old Time
+	 */
+    VALUE old_time = rb_funcall(rb_const_get(rb_cObject, rb_intern("Time")), rb_intern("now"), 0);
+    time_free = RDATA(old_time)->dfree;
+#endif
+
     rb_tzdir = StringValueCStr(tz_dir);
 
     id_divmod = rb_intern("divmod");
@@ -2725,13 +2778,13 @@ Init_time2(void)
     rb_define_singleton_method(rb_cTime, "_load", time_load, 1);
 
     rb_cTimeZone = rb_define_class_under(rb_cTime, "Zone", rb_cObject);
-    
+
     //rb_define_const(rb_cTimeZone, "UTC", timezone_get(rb_cTimeZone, rb_str_new));
-    
+
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
     rb_define_singleton_method(rb_cTimeZone, "default", timezone_default_get, 0);
     rb_define_singleton_method(rb_cTimeZone, "default=", timezone_default_set, 1);
-    
+
     rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "inspect", timezone_inspect, 0);

@@ -55,21 +55,21 @@ Platform: ruby 1.9.2dev (2009-03-12 trunk 22918) [i686-linux]
 
 h4. Time zones conversion
 
-About 13 times faster than TZInfo, but could be even faster if you use <code>local</code> instead of <code>getlocal</code> which creates a new object every time 
+About 13 times faster than TZInfo, but could be even faster if you use <code>local</code> instead of <code>getlocal</code> which creates a new object every time
 <pre>
 
 n = 100000
 tz1 = TZInfo::Timezone.get('US/Pacific')
 tz2 = Time::Zone['US/Pacific']
 
-Benchmark.bm{|r| 
-  r.report{ 
-    n.times{ tz1.utc_to_local(t) } 
+Benchmark.bm{|r|
+  r.report{
+    n.times{ tz1.utc_to_local(t) }
  }
- r.report{ 
-    n.times{ t.getlocal(tz2) } 
- } 
-} 
+ r.report{
+    n.times{ t.getlocal(tz2) }
+ }
+}
 
 #      user     system      total        real
 #  4.510000   0.000000   4.510000 (  4.631645)
@@ -79,7 +79,7 @@ Benchmark.bm{|r|
 
 h4. strptime
 
-About 50 times faster than <code>strptime</code> from the ruby standard library (we use <code>Method#call</code> to avoid redefinition) 
+About 50 times faster than <code>strptime</code> from the ruby standard library (we use <code>Method#call</code> to avoid redefinition)
 
 <pre>
 
@@ -91,13 +91,13 @@ require 'time'
 m1 = Time.method(:strptime)
 
 n = 10000
-Benchmark.bm{|b| 
-  b.report{ 
-    n.times{ m1.call(str, fmt) } 
+Benchmark.bm{|b|
+  b.report{
+    n.times{ m1.call(str, fmt) }
   }
-  b.report{ 
-    n.times{ m2.call(str, fmt) } 
-  } 
+  b.report{
+    n.times{ m2.call(str, fmt) }
+  }
 }
 
 #      user     system      total        real
@@ -112,8 +112,7 @@ Code tested on Debian Etch with GCC 4.3.3 and Windows with VC 9
 
 h3. TODO
 
-* currently issue segfault with methods which uses internal Time API, i.e. some <code>File</code>, <code>Socket</code> and <code>Zlib</code> methods
-* <code>strptime</code> implementation doesn't support some special flags like
+* <code>strptime</code> implementation doesn't support some special flags 
 * code isn't clean enough, many old code should be removed
 * tests, tests, tests,
 * ugly english :)
