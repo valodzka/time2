@@ -63,19 +63,20 @@ struct old_time_object {
 static void (*time_free)(void *) = NULL;
 
 #  define IS_GMT(tobj) \
-    (((tobj)->gmt > INT_MIN+1)?(rb_bug("time2:old style gmt"),0):(((tobj)->gmt-INT_MIN)))
+    (((tobj)->gmt > INT_MIN+1)?(rb_bug("time2: old style gmt value"),0):(((tobj)->gmt-INT_MIN)))
 #  define GMT_TRUE(tobj)  ((tobj)->gmt = INT_MIN+1)
 #  define GMT_FALSE(tobj)  ((tobj)->gmt = INT_MIN)
-#  define GetTimeval(obj, tobj) do {					\
-	if(TYPE(obj) == T_DATA && RDATA(obj)->dmark != time_mark) {	\
-	    struct old_time_object *old_tobj =				\
-		(struct old_time_object *)DATA_PTR(obj);		\
-	    tobj = time_from_old_format(&(obj),(old_tobj));		\
-	}								\
-	else {								\
-	    Data_Get_Struct(obj, struct time_object, tobj);		\
-	}								\
-    }while(0)
+#  define GetTimeval(obj, tobj) do {								\
+		if(TYPE(obj) == T_DATA && RDATA(obj)->dmark != time_mark) {	\
+			struct old_time_object *old_tobj =						\
+				(struct old_time_object *)DATA_PTR(obj);			\
+			tobj = time_from_old_format(&(obj),(old_tobj));			\
+		}															\
+		else {														\
+			Data_Get_Struct(obj, struct time_object, tobj);			\
+		}															\
+    } while(0)
+
 #  define IS_BIN_TIME(t) ((TYPE(t) == T_DATA) && ((RDATA(t)->dfree == time_free)))
 #else
 #  define IS_GMT(obj) ((tobj)->gmt)
@@ -107,7 +108,7 @@ static void
 time_mark(void *p)
 {
 }
- 
+
 #endif
 
 static VALUE
@@ -121,7 +122,7 @@ time_s_alloc(VALUE klass)
     obj = Data_Make_Struct(klass, struct time_object, 0, time_free, tobj);
 #endif
     tobj->tm_got=0;
-    tobj->gmt=INT_MIN;
+    tobj->gmt = INT_MIN;
     tobj->ts.tv_sec = 0;
     tobj->ts.tv_nsec = 0;
     return obj;
@@ -1304,6 +1305,7 @@ time_init_copy(VALUE copy, VALUE time)
     if (!IS_BIN_TIME(time)) {
 		rb_raise(rb_eTypeError, "wrong argument type");
     }
+
     GetTimeval(time, tobj);
     GetTimeval(copy, tcopy);
     MEMCPY(tcopy, tobj, struct time_object, 1);
@@ -2378,7 +2380,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
 static VALUE
 time_mdump(VALUE time)
 {
-    struct time_object *tobj;
+    struct time_object *tobj;//TODO:serialize timezone
     struct pg_tm *tm;
     unsigned long p, s;
     char buf[8];
@@ -2542,10 +2544,14 @@ end_submicro: ;
 
     GetTimeval(time, tobj);
     tobj->tm_got = 0;
-	if (gmt)
+	if (gmt) { //TODO: normal deserialisation
+		tobj->tz = timezone_utc();
 		GMT_TRUE(tobj);
-	else
+	}
+	else {
+		tobj->tz = timezone_default(NULL);
 		GMT_FALSE(tobj);
+	}
     tobj->ts.tv_sec = sec;
     tobj->ts.tv_nsec = nsec;
 
@@ -2695,7 +2701,7 @@ timezone_inspect(VALUE timezone)
  *  this fact when comparing times with each other---times that are
  *  apparently equal when displayed may be different when compared.
  */
-char * rb_tzdir = NULL;
+const char * rb_tzdir = NULL;
 
 void
 Init_time2(void)
@@ -2719,6 +2725,8 @@ Init_time2(void)
 
     rb_cTime = rb_define_class("Time", rb_cObject);
     rb_include_module(rb_cTime, rb_mComparable);
+	rb_require("time"); // defines strptime which we wil redefine later
+	rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
 
     rb_define_alloc_func(rb_cTime, time_s_alloc);
     rb_define_singleton_method(rb_cTime, "now", rb_class_new_instance, -1);

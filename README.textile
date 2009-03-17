@@ -108,11 +108,11 @@ Benchmark.bm{|b|
 
 h3. Portability
 
-Code tested on Debian Etch with GCC 4.3.3 and Windows with VC 9
+Code tested on Debian Lenny with GCC 4.3.3 and Windows with VC 9
 
 h3. TODO
 
-* <code>strptime</code> implementation doesn't support some special flags 
+* <code>strptime</code> implementation doesn't support some special flags
 * code isn't clean enough, many old code should be removed
 * tests, tests, tests,
 * ugly english :)

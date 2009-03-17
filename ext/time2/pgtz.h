@@ -63,13 +63,13 @@ struct pg_tz
 extern int	pg_open_tzfile(const char *name, char *canonname);
 
 /* in localtime.c */
-extern int	tzload(const char *name, char *canonname, struct state * sp, 
+extern int	tzload(const char *name, char *canonname, struct state * sp,
 				   int doextend);
 extern int	tzparse(const char *name, struct state * sp, int lastditch);
 
 #define RB_ERRNO_RAISE(msg, det) rb_raise(rb_eRuntimeError, msg ": %d", det, errno)
 
-extern char * rb_tzdir;
+extern const char * rb_tzdir;
 
 /* Julian-date equivalents of Day 0 in Unix and Postgres reckoning */
 #define UNIX_EPOCH_JDATE		2440588 /* == date2j(1970, 1, 1) */

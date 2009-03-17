@@ -1,6 +1,5 @@
 $: << File.join(File.dirname(__FILE__), '..', 'lib')
 
-require 'time'
 require 'timetz'
 require 'test/unit'
 
