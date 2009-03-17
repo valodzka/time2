@@ -1498,35 +1498,34 @@ time_asctime(VALUE time)
 }
 
 #ifdef HAVE_TM_ZONE
-#  define COPY_TZ(x) x
+#  define COPY_TZ(expr) expr
 #else
-#  define COPY_TZ (x) (0)
+#  define COPY_TZ(expr) (0)
 #endif
 
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
-#  define COPY_GMTOFF(x) x
+#  define COPY_GMTOFF(expr) expr
 #else
-#  define COPY_GMTOFF(x) (0)
+#  define COPY_GMTOFF(expr) (0)
 #endif
 
 
-#define RB_STRFTIME(s, maxsize, format, timeptr, ts, gmt, ret) \
-  do { \
-    struct tm old_system_tm; \
-    	old_system_tm.tm_sec = (timeptr)->tm_sec; \
-	old_system_tm.tm_min = (timeptr)->tm_min;\
-	old_system_tm.tm_hour = (timeptr)->tm_hour;\
-	old_system_tm.tm_mday = (timeptr)->tm_mday;\
-	old_system_tm.tm_mon = (timeptr)->tm_mon;\
-	old_system_tm.tm_year = (timeptr)->tm_year;\
-	old_system_tm.tm_wday = (timeptr)->tm_wday;\
-	old_system_tm.tm_yday = (timeptr)->tm_yday;\
-	old_system_tm.tm_isdst = (timeptr)->tm_isdst;\
-	/*TODO:COPY_GMTOFF(old_system_tm.tm_gmtoff = (timeptr)->tm_gmtoff);*/\
-	/*TODO:COPY_TZ(old_system_tm.tm_zone = (timeptr)->tm_zone);*/\
-        len = rb_strftime(s, maxsize, format,  \
-	    &old_system_tm, ts, gmt);\
-  } while(0)
+#define RB_STRFTIME(s, maxsize, format, timeptr, ts, gmt, ret) do {	\
+	struct tm old_system_tm;					\
+    	old_system_tm.tm_sec = (timeptr)->tm_sec;			\
+	old_system_tm.tm_min = (timeptr)->tm_min;			\
+	old_system_tm.tm_hour = (timeptr)->tm_hour;			\
+	old_system_tm.tm_mday = (timeptr)->tm_mday;			\
+	old_system_tm.tm_mon = (timeptr)->tm_mon;			\
+	old_system_tm.tm_year = (timeptr)->tm_year;			\
+	old_system_tm.tm_wday = (timeptr)->tm_wday;			\
+	old_system_tm.tm_yday = (timeptr)->tm_yday;			\
+	old_system_tm.tm_isdst = (timeptr)->tm_isdst;			\
+	COPY_GMTOFF(old_system_tm.tm_gmtoff = (timeptr)->tm_gmtoff);	\
+	COPY_TZ(old_system_tm.tm_zone = (timeptr)->tm_zone);		\
+        len = rb_strftime(s, maxsize, format,				\
+			  &old_system_tm, ts, gmt);			\
+    } while(0)
 
 size_t
 rb_strftime(char *s, size_t maxsize, const char *format,
