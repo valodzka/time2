@@ -6,7 +6,7 @@ require 'rake/testtask'
 
 BIN = "*.{bundle,so,o,obj,pdb,lib,def,exp}"
 CLEAN.include ["ext/time2/#{BIN}", "lib/**/#{BIN}", 'ext/time2/Makefile',
-               '**/.*.sw?', '*.gem', '.config', 'pkg']
+               '**/.*.sw?', '*.gem', '.config', 'pkg', 'html']
 
 Rake::TestTask.new do |t|
   t.libs = []

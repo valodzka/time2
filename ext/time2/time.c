@@ -409,7 +409,7 @@ struct timespec rb_time_timespec(VALUE time) { return rb_time_timespec_static(ti
  *  <i>seconds</i> and <i>microseconds_with_frac</i> from the Epoch.
  *  <i>seconds_with_frac</i> and <i>microseconds_with_frac</i>
  *  can be Integer, Float, Rational, or other Numeric.
- *  non-portable feature allows the offset to be negative on some systems.
+ *  The offset to be negative.
  *
  *     Time.at(0)            #=> 1969-12-31 18:00:00 -0600
  *     Time.at(Time.at(0))   #=> 1969-12-31 18:00:00 -0600
@@ -2685,8 +2685,15 @@ timezone_get(VALUE klass, VALUE name)
    return Data_Wrap_Struct(klass, 0, 0, tz);
 }
 
-
-
+/*
+ *  call-seq:
+ *     Time::Zone.default => timezone 
+ *     Time::Zone.local   => timezone 
+ *
+ *  Returns timezone which used as local timezone
+ *
+ *     Time::Zone.default   # => #<Time::Zone: Europe/Athens>
+ */
 static VALUE
 timezone_default_get(VALUE klass)
 {
@@ -2695,6 +2702,20 @@ timezone_default_get(VALUE klass)
     return Data_Wrap_Struct(klass, 0, 0, default_timezone);
 }
 
+/*
+ *  call-seq:
+ *     Time::Zone.default = timezone or it name
+ *     Time::Zone.local = timezone or it name
+ *
+ *  Sets timezone which will be used as local timezone
+ *
+ *     Time::Zone.default = "Japan"            # => "Japan"
+ *     Time.now                                # => 2009-03-18 21:07:51 JST
+ *     Time::Zone.default = "US/Pacific"       # => "US/Pacific"
+ *     Time.now                                # => 2009-03-18 05:08:06 PDT
+ *     Time::Zone.default = Time::Zone["UTC"]  # => "UTC"
+ *     Time.now                                # => 2009-03-18 12:08:17 UTC
+ */
 static VALUE
 timezone_default_set(VALUE klass, VALUE timezone)
 {
@@ -2706,6 +2727,15 @@ timezone_default_set(VALUE klass, VALUE timezone)
     return timezone;
 }
 
+/*
+ *  call-seq:
+ *     timezone.name => string
+ *     timezone.to_s => string
+ *
+ *  Return a string with name of the timezone
+ *
+ *     tz.name     # => "Brazil/West"
+ */
 static VALUE
 timezone_name(VALUE timezone)
 {
@@ -2718,6 +2748,14 @@ timezone_name(VALUE timezone)
     return tz_name ? rb_str_new_cstr(tz_name) : Qnil;
 }
 
+/*
+ *  call-seq:
+ *     timezone.inspect => string
+ *
+ *  Return a string describing this timezone object.
+ *
+ *     tz.inspect     # => #<Time::Zone: Europe/Berlin>
+ */
 static VALUE
 timezone_inspect(VALUE timezone)
 {
@@ -2729,7 +2767,7 @@ timezone_inspect(VALUE timezone)
     tz_name = pg_get_timezone_name(tz);
 
     rb_str_buf_cat2(str, rb_obj_classname(timezone));
-    rb_str_buf_cat2(str, ":");
+    rb_str_buf_cat2(str, ": ");
     rb_str_buf_cat2(str, tz_name ? tz_name : "nil");
     rb_str_buf_cat2(str, ">");
 
@@ -2860,6 +2898,8 @@ Init_time2(void)
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
     rb_define_singleton_method(rb_cTimeZone, "default", timezone_default_get, 0);
     rb_define_singleton_method(rb_cTimeZone, "default=", timezone_default_set, 1);
+    rb_define_singleton_method(rb_cTimeZone, "local", timezone_default_get, 0);
+    rb_define_singleton_method(rb_cTimeZone, "local=", timezone_default_set, 1);
 
     rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
