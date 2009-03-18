@@ -113,16 +113,16 @@ Code tested on Debian Lenny with GCC 4.3.3 and Windows with VC 9
 h3. TODO
 
 * <code>strptime</code> implementation doesn't support some special flags
-* <code>stftime</code> on some platforms doesn't dispaly %Z flag correctly
+* <code>stftime</code> on some platforms doesn't display %Z correctly
 * code isn't clean enough, many old code should be removed
-* tests, tests, tests,
+* tests, tests, tests
 * ugly english :)
 
 h3. Acknowledgements
 
-* "tz database":http://www.twinsun.com/tz/tz-link.htm for the excellent "time zones database and initial version of time functions":ftp://elsie.nci.nih.gov/pub
-* "postgresql":postgresql.org for initial multitimezone "code modification":http://git.postgresql.org/?p=postgresql.git;a=tree;f=src/timezone
-* "free BSD project":http://www.freebsd.org for "initial strptime implementation":http://www.freebsd.org.ua/cgi/cvsweb.cgi/src/lib/libc/stdtime/strptime.c?content-type=text/x-cvsweb-markup&cvsroot=freebsd
+* "tz database":http://www.twinsun.com/tz/tz-link.htm for the excellent "time zones database and initial version of time functions (version tzcode2009b)":ftp://elsie.nci.nih.gov/pub
+* "postgresql":postgresql.org for initial multitimezone "code modification (version as of 18.03.2009, revision 3d9af4c1128c6cf3c5bcaa8db1910e7295f91000)":http://git.postgresql.org/?p=postgresql.git;a=tree;f=src/timezone
+* "free BSD project":http://www.freebsd.org for "initial strptime implementation (vesion as of 18.03.2009, revisition  1.35)":http://www.freebsd.org.ua/cgi/cvsweb.cgi/src/lib/libc/stdtime/strptime.c?content-type=text/x-cvsweb-markup&cvsroot=freebsd
 
 h3. License
 
