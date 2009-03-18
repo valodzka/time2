@@ -2,16 +2,21 @@ require 'rake'
 require 'rake/clean'
 require 'rake/rdoctask'
 require 'rake/testtask'
+#require 'rdoc/rdoc'
 
 BIN = "*.{bundle,so,o,obj,pdb,lib,def,exp}"
 CLEAN.include ["ext/time2/#{BIN}", "lib/**/#{BIN}", 'ext/time2/Makefile',
                '**/.*.sw?', '*.gem', '.config', 'pkg']
 
-desc "Run all the tests"
 Rake::TestTask.new do |t|
-    t.libs = []
-    t.test_files = FileList['test/test_*.rb']
-    t.verbose = true
+  t.libs = []
+  t.test_files = FileList['test/test_*.rb']
+  t.verbose = true
+end
+
+Rake::RDocTask.new do |rdoc|
+  rdoc.rdoc_files.add('ext/time2/time.c')
+  rdoc.rdoc_dir = 'html' # rdoc output folder
 end
 
 task :default => [:build, :test]
@@ -20,7 +25,7 @@ task :build => :time2
 
 desc "initialize Visual Studio Command Prompt"
 task :vscp do
-  if (vs=ENV["VS90COMNTOOLS"]) && !ENV['VCINSTALLDIR'] 
+  if (vs=ENV["VS90COMNTOOLS"]) && !ENV['VCINSTALLDIR']
     sh %Q[%comspec% /k ""#{File.join(vs, '..', '..', 'VC', 'vcvarsall.bat')}"" x86]
   else
     puts(ENV['VCINSTALLDIR'] ? "VSCP already initialized" : "enviroment variable VS90COMNTOOLS not found")
@@ -47,7 +52,7 @@ task :time2 => ["#{time2_dir}Makefile", time2_so]
 
 file time2_so => time2_files do
   Dir.chdir(time2_dir) do
-    sh(RUBY_PLATFORM =~ /mswin/ ? "nmake" : 'make')    
+    sh(RUBY_PLATFORM =~ /mswin/ ? "nmake" : 'make')
   end
   cp time2_so, "lib"
 end
@@ -57,3 +62,5 @@ file "#{time2_dir}Makefile" => "#{time2_dir}extconf.rb" do
     sh "#{Config::CONFIG['prefix']}/bin/#{Config::CONFIG['ruby_install_name']} extconf.rb"
   end
 end
+
+

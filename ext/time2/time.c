@@ -2296,10 +2296,6 @@ time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
 	struct pg_tm tm_now;
 
 	if (tm->tm_yday != INT_MIN) {
-		if (tm->tm_mday != INT_MIN || tm->tm_mon != INT_MIN) {
-			//TODO: add to documentation
-		//rb_warn("Year day redefines month and month day");
-	  }
 	  // mktime will detect appropriate month and day
 	  tm->tm_mday = tm->tm_yday + 1;
 	  tm->tm_mon = 0;
@@ -2336,6 +2332,62 @@ time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
 	}
 }
 
+/*
+ *  call-seq:
+ *     Time.strptime( string, format ) => time
+ *
+ * Convert the <i>string</i> to time, using the format specified by <i>format</i>
+ *
+ * The format is composed of zero or more directives.Each directive is composed
+ * of one of the following:
+ * - one or more white-space characters;
+ * - an ordinary character (neither '%' nor a white-space character);
+ * - a conversion specification.
+ *
+ * Each conversion specification is composed of a '%' character followed by a
+ * conversion character which specifies the replacement required. The following
+ * conversion specifications are supported:
+ * - <s>%a - The abbreviated weekday name (``Sun'')</s>
+ * - <s>%A - The  full  weekday  name (``Sunday'')</s>
+ * - %b - The abbreviated month name (``Jan'')
+ * - %B - The  full  month  name (``January'')
+ * - <s>%c - The preferred local date and time representation</s>
+ * - %d - Day of the month (01..31)
+ * - %F - Equivalent to %Y-%m-%d (the ISO 8601 date format)
+ * - %H - Hour of the day, 24-hour clock (00..23)
+ * - %I - Hour of the day, 12-hour clock (01..12)
+ * - %j - Day of the year (001..366)
+ * - <s>%L - Millisecond of the second (000..999)</s>
+ * - %m - Month of the year (01..12)
+ * - %M - Minute of the hour (00..59)
+ * - %N - Fractional seconds digits, default is 9 digits (nanosecond)
+ * - - <s>%3N  millisecond (3 digits)
+ * - - %6N  microsecond (6 digits)
+ * - - %9N  nanosecond (9 digits)</s>
+ * - %p - Meridian indicator
+ * - <s>%P - Meridian indicator (``am''  or  ``pm'')</s>
+ * - %s - Number of seconds since 1970-01-01 00:00:00 UTC.
+ * - %S - Second of the minute (00..60)
+ * - <s>%U - Week  number  of the current year,
+ * starting with the first Sunday as the first
+ * day of the first week (00..53)
+ * - %W - Week  number  of the current year,
+ * starting with the first Monday as the first
+ * day of the first week (00..53)
+ * - %w - Day of the week (Sunday is 0, 0..6)</s>
+ * - %x - Preferred representation for the date alone, no time (%m/%d/%y by default)
+ * - %X - Preferred representation for the time alone, no date (%H:%M:%S by default)
+ * - %y - Year without a century (00..99)
+ * - %Y - Year with century
+ * - <s>%Z - Time zone name</s>
+ *
+ * TODO:
+ * - unknown modificators silently ignored
+ * - %j replace %m and %d undepend on order of arguments
+ * - document principe of gaps filling and replacement
+ * - replacement not work for hours, minutes, etc
+ * - %N behaves different from old strptime
+ */
 static VALUE
 time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementation
 {
@@ -2710,9 +2762,8 @@ Init_time2(void)
 #define rb_intern(str) rb_intern_const(str)
     VALUE tz_dir = rb_gv_get("$__tz_directory");
 #ifdef OLD_TIME_COMPAT
-	/* Ponter to function time_free used to detect is object is Time
-	   We get this pointer and use it to behave like old Time
-	 */
+	//Ponter to function time_free used to detect is object is Time
+	//We get this pointer and use it to behave like old Time
     VALUE old_time = rb_funcall(rb_const_get(rb_cObject, rb_intern("Time")), rb_intern("now"), 0);
     time_free = RDATA(old_time)->dfree;
 #endif
