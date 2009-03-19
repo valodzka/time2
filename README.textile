@@ -110,6 +110,11 @@ h3. Portability
 
 Code tested on Debian Lenny with GCC 4.3.3 and Windows with VC 9
 
+h3. Open questions
+
+* how should %N work?
+* whether %Q be implemented?
+
 h3. TODO
 
 * <code>strptime</code> implementation doesn't support some special flags

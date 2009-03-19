@@ -2,20 +2,20 @@
  * Powerdog Industries kindly requests feedback from anyone modifying
  * this function:
  *
- * Date: Thu, 05 Jun 1997 23:17:17 -0400  
+ * Date: Thu, 05 Jun 1997 23:17:17 -0400
  * From: Kevin Ruddy <kevin.ruddy@powerdog.com>
  * To: James FitzGibbon <james@nexis.net>
  * Subject: Re: Use of your strptime(3) code (fwd)
- * 
+ *
  * The reason for the "no mod" clause was so that modifications would
- * come back and we could integrate them and reissue so that a wider 
- * audience could use it (thereby spreading the wealth).  This has   
+ * come back and we could integrate them and reissue so that a wider
+ * audience could use it (thereby spreading the wealth).  This has
  * made it possible to get strptime to work on many operating systems.
  * I'm not sure why that's "plain unacceptable" to the FreeBSD team.
- * 
+ *
  * Anyway, you can change it to "with or without modification" as
- * you see fit.  Enjoy.                                          
- * 
+ * you see fit.  Enjoy.
+ *
  * Kevin Ruddy
  * Powerdog Industries, Inc.
  */
@@ -50,9 +50,9 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/* SOURCE: 
+/* SOURCE:
      http://www.freebsd.org.ua/cgi/cvsweb.cgi/src/lib/libc/stdtime/?cvsroot=freebsd
-	 Revision 1.35, Mon Nov 17 04:19:15 2003 UTC by nectar 
+	 Revision 1.35, Mon Nov 17 04:19:15 2003 UTC by nectar
  */
 #include "c.h"
 #include "private.h"
@@ -69,7 +69,7 @@ static const struct pg_time_locale {
   const char *X_fmt; /* The time, using the locale's format. */
   const char *x_fmt; /* The date, using the locale's date format. */
   const char *c_fmt; /* Date and time, using the locale's format. */
-  const char *ampm_fmt; /* 12-hour clock time using the AM/PM notation; 
+  const char *ampm_fmt; /* 12-hour clock time using the AM/PM notation;
 						   in the default locale, this shall be equivalent to %I:%M:%S %p */
   /* TODO: add PM AM localisation */
 } pgDefaultTimeLocale = {
@@ -160,7 +160,7 @@ label:
 			break;
 
 		case 'c': /* Date and time, using the locale's format. */
- 		    buf = _pg_strptime(buf, loc->c_fmt, tm, nsec, tz);			
+ 		    buf = _pg_strptime(buf, loc->c_fmt, tm, nsec, tz);
 			if (buf == 0)
 				return 0;
 			break;
@@ -195,7 +195,7 @@ label:
 				return 0;
 			break;
 
-		case 'r': /* 12-hour clock time using the AM/PM notation; 
+		case 'r': /* 12-hour clock time using the AM/PM notation;
 					 in the default locale, this shall be equivalent to %I:%M:%S %p */
   		    buf = _pg_strptime(buf, loc->ampm_fmt, tm, nsec, tz);
 			if (buf == 0)
@@ -546,14 +546,14 @@ label:
 				strncpy(zonestr, buf, TZ_STRLEN_MAX);
 				zonestr[TZ_STRLEN_MAX] = '\0';
 				// TODO: normal implementation
-				if (0 == strcmp(zonestr, "GMT") || 
-					0 == strcmp(zonestr, "Z") || 
+				if (0 == strcmp(zonestr, "GMT") ||
+					0 == strcmp(zonestr, "Z") ||
 					0 == strcmp(zonestr, "UTC")) {
 					tm->tm_zone = "GMT";
 				}
 				else {
 				  rb_notimplement();
-				}				
+				}
 				//} else if (0 == strcmp(zonestr, tzname[0])) {
 				    //tm->tm_isdst = 0;
 				//} else if (0 == strcmp(zonestr, tzname[1])) {
@@ -564,7 +564,7 @@ label:
 			break;
 		}
 	}
-	
+
 	switch(has_am_pm) {
 	case 1: /* AM */
 		if (tm->tm_hour == 12)
@@ -581,9 +581,9 @@ label:
 
 
 const char *
-pg_strptime(const char * buf, 
-			const char * fmt,  
-			struct pg_tm * tm, 
+pg_strptime(const char * buf,
+			const char * fmt,
+			struct pg_tm * tm,
 			long *nsec,
 			struct pg_tz const *tz)
 {

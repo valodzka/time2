@@ -2284,52 +2284,52 @@ time_strftime(VALUE time, VALUE format)
 }
 
 static void
-time_tm_now(struct pg_tm *tm, struct pg_tz const* tz)
-{
-   pg_time_t now = time(NULL);
-   pg_localtime_r(&now, tz, tm);
-}
-
-static void
-time_fill_invalid_tm(struct pg_tm *tm, struct pg_tz const * tz)
+time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
 {
 	struct pg_tm tm_now;
+	int fill_now = 1;
+
+	//if (tm->tm_yday != INT_MIN) {
+	  //}
+
+	if (tm->tm_year == INT_MIN) {
+		pg_time_t now = time(NULL);
+		pg_localtime_r(&now, tz, &tm_now);
+		tm->tm_year = tm_now.tm_year;
+	}
+	else
+		fill_now = 0;
 
 	if (tm->tm_yday != INT_MIN) {
-	  // mktime will detect appropriate month and day
-	  tm->tm_mday = tm->tm_yday + 1;
-	  tm->tm_mon = 0;
+		// let mktime will detect appropriate month and day
+		tm->tm_mday = tm->tm_yday + 1;
+		tm->tm_mon = 0;
 	}
 
-    if (tm->tm_year == INT_MIN) {
-	  time_tm_now(&tm_now, tz);
-	  tm->tm_year = tm_now.tm_year;
-	  if (tm->tm_mon == INT_MIN) {
-		tm->tm_mon = tm_now.tm_mon;
-		if(tm->tm_mday == INT_MIN) {
-		  tm->tm_mday = tm_now.tm_mday;
-		}
-	  }
-	  else {
-		if(tm->tm_mday == INT_MIN) {
-		  time_tm_now(&tm_now, tz);
-		  tm->tm_mday = 1;
-		}
-	  }
-    }
-	else {
-	  if (tm->tm_mon == INT_MIN) {
-		tm->tm_mon = 0;
-		if(tm->tm_mday == INT_MIN) {
-		  tm->tm_mday = 1;
-		}
-	  }
-	  else {
-		if(tm->tm_mday == INT_MIN) {
-		  tm->tm_mday = 1;
-		}
-	  }
-	}
+	if (tm->tm_mon == INT_MIN)
+		tm->tm_mon = fill_now ? tm_now.tm_mon : 0;
+	else
+		fill_now = 0;
+
+	if (tm->tm_mday == INT_MIN)
+		tm->tm_mday = fill_now ? tm_now.tm_mday : 1;
+	else
+		fill_now = 0;
+
+	if (tm->tm_hour == INT_MIN)
+		tm->tm_hour = fill_now ? tm_now.tm_hour : 0;
+	else
+		fill_now = 0;
+
+	if (tm->tm_min == INT_MIN)
+		tm->tm_min = fill_now ? tm_now.tm_min : 0;
+	else
+		fill_now = 0;
+
+	if (tm->tm_sec == INT_MIN)
+		tm->tm_sec = fill_now ? tm_now.tm_sec : 0;
+	else
+		fill_now = 0;
 }
 
 /*
@@ -2398,12 +2398,16 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
 	long nsec = 0;
     const char *p;
 
-    MEMZERO(&tm, struct pg_tm, 1);
     tm.tm_year = INT_MIN;
     tm.tm_mon = INT_MIN;
-    tm.tm_mday = INT_MIN;
+	tm.tm_mday = INT_MIN;
+	tm.tm_hour = INT_MIN;
+	tm.tm_min = INT_MIN;
+	tm.tm_sec = INT_MIN;
+    tm.tm_wday = 0;
 	tm.tm_yday = INT_MIN;
     tm.tm_isdst = -1;
+	tm.tm_zone = NULL;
 
     p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec, timezone_default(NULL));
 
@@ -2417,9 +2421,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
         tz = timezone_default(NULL);
         utc_p = 0;
     }
-
-    time_fill_invalid_tm(&tm, tz);
-
+    time_fill_gaps_tm(&tm, tz);
     time_obj = time_new_internal(klass, make_time_t(&tm, tz, utc_p), nsec, tz);
 
     return utc_p ? time_gmtime(time_obj) : time_localtime_with_tz(time_obj, tz);
