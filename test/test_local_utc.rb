@@ -21,4 +21,14 @@ class TestLocalUTC < Test::Unit::TestCase
       assert_equal "CET", t.zone
     end
   end
+
+  def test_leapsecond
+    with_tz("right/UTC") do
+      t = Time.local(2005, 12, 31, 23, 59, 59)
+      leap = Time.at(t.to_i + 1)
+      assert_equal 60, leap.sec
+      assert_equal 59, leap.min
+      assert_equal 2005, leap.year
+    end
+  end
 end
