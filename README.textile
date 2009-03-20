@@ -20,23 +20,23 @@ Short <code>irb</code> session:
 $ruby -rtimetz -S irb
 # Local timezone settings
 >> TimeZone.local
-=> #<TimeZone: Europe/Minsk>
+=> #<TimeZone: Europe/Athens>
 >> Time.now
-=> 2009-03-14 23:27:08 +0200
->> TimeZone.local = "Japan"
-=> "Japan"
+=> 2009-03-20 19:54:34 +0200
+>> TimeZone.local "Japan"
+=> #<TimeZone: Europe/Athens>
 >> Time.now
-=> 2009-03-15 06:27:26 +0900
+=> 2009-03-21 02:54:54 +0900
 >> Time.now.zone
 => "JST"
 
-# Converting from one zone to another
+# Convert from one zone to another
 >> t = Time.now
-=> 2009-03-15 06:27:44 +0900
->> tz = TimeZone["US/Pacific"]
+=> 2009-03-21 02:55:37 +0900
+>> tz = TimeZone['US/Pacific']
 => #<TimeZone: US/Pacific>
 >> t.localtime(tz)
-=> 2009-03-14 14:27:44 -0700
+=> 2009-03-20 10:55:37 -0700
 >> t.dst?
 => true
 >> t.zone
@@ -45,8 +45,8 @@ $ruby -rtimetz -S irb
 => "US/Pacific"
 
 # Leap second (most OS doesn't have leap second support, so by default we use zones without leap second)
->> TimeZone.local = "right/UTC"
-=> "right/UTC"
+>> TimeZone.local  "right/UTC"
+=> #<TimeZone: Japan>
 >> t = Time.local(2005, 12, 31, 23, 59, 59)
 => 2005-12-31 23:59:59 UTC
 >> t = Time.at(t.to_i + 1)
@@ -62,7 +62,7 @@ Platform: ruby 1.9.2dev (2009-03-12 trunk 22918) [i686-linux]
 
 h4. Time zones conversion
 
-About 13 times faster than TZInfo, but could be even faster if you use <code>local</code> instead of <code>getlocal</code> which creates a new object every time
+About 12-21 times faster than TZInfo, but could be even faster if you use <code>local</code> instead of <code>getlocal</code> which creates a new object every time
 <pre>
 
 n = 100000
@@ -86,16 +86,15 @@ Benchmark.bm{|r|
 
 h4. strptime
 
-About 50 times faster than <code>strptime</code> from the ruby standard library (we use <code>Method#call</code> to avoid redefinition)
+About 10-50 times faster than <code>strptime</code> from the ruby standard library (we use <code>Method#call</code> to avoid redefinition)
 
 <pre>
 
 fmt = "%Y-%m-%d %Z"
 str = "2007-10-10 GMT"
 
+m1 = Time.method(:old_strptime)
 m2 = Time.method(:strptime)
-require 'time'
-m1 = Time.method(:strptime)
 
 n = 10000
 Benchmark.bm{|b|

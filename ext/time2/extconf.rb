@@ -19,15 +19,17 @@ end
 
 def check_leap_seconds()
   checking_for checking_message("for leap seconds") do
-    # 1136073622 - 2005 Dec 31, 23:59:60 if system support leap seconds
+    # 1136073622 is 2005 Dec 31, 23:59:60 if system support leap seconds and 2006 Jan 01 00:00:22 otherwise
     if try_code('time_t t = 1136073622;', 'gmtime(&t)->tm_sec', 'time.h') == 60
       $defs << "-DHAVE_LEAP_SECONDS"
     end
   end
 end
+
 # allow use old ruby time in parallel with new
 # adds aditional checks and convertation
 $defs << "-DOLD_TIME_COMPAT"
+
 check_leap_seconds()
 
 create_makefile("time2")

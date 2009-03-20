@@ -2633,7 +2633,7 @@ timezone_cached_get(const char *name)
     if (!value) {
         struct pg_tz* tz = pg_tzset(name);
         if (!tz)
-            rb_raise(rb_eRuntimeError, "time zone \"%s\" not found", name);
+            rb_raise(rb_eArgError, "time zone \"%s\" not found", name);
         st_insert(tz_cache, (st_data_t)name, (st_data_t)tz);
         value = (st_data_t)tz;
     }
@@ -2674,47 +2674,36 @@ timezone_get(VALUE klass, VALUE name)
 
    return Data_Wrap_Struct(klass, 0, 0, tz);
 }
-
 /*
  *  call-seq:
- *     TimeZone.default => timezone 
- *     TimeZone.local   => timezone 
+ *     TimeZone.local(new_timezone) -> old local timezone
+ *     TimeZone.local -> current local timezone
  *
- *  Returns timezone which used as local timezone
+ *  Sets timezone which will be used as a local
  *
- *     TimeZone.local   # => #<TimeZone: Europe/Athens>
- */
-static VALUE
-timezone_default_get(VALUE klass)
-{
-    struct pg_tz * default_timezone = timezone_default(NULL);
-
-    return Data_Wrap_Struct(klass, 0, 0, default_timezone);
-}
-
-/*
- *  call-seq:
- *     TimeZone.default = timezone or it name
- *     TimeZone.local = timezone or it name
- *
- *  Sets timezone which will be used as local timezone
- *
- *     TimeZone.local = "Japan"              # => "Japan"
+ *     TimeZone.local                        # => #<TimeZone: Europe/Athens>
+ *     TimeZone.local "Japan"                # => #<TimeZone: Europe/Athens>
  *     Time.now                              # => 2009-03-18 21:07:51 JST
- *     TimeZone.local = "US/Pacific"         # => "US/Pacific"
+ *     TimeZone.local "US/Pacific"           # => #<TimeZone: Japan>
  *     Time.now                              # => 2009-03-18 05:08:06 PDT
- *     TimeZone.default = TimeZone["UTC"]    # => "UTC"
+ *     TimeZone.local = TimeZone["UTC"]      # => #<TimeZone: US/Pacific>
  *     Time.now                              # => 2009-03-18 12:08:17 UTC
  */
 static VALUE
-timezone_default_set(VALUE klass, VALUE timezone)
+timezone_default_set_get(int argc, VALUE *argv, VALUE klass)
 {
     struct pg_tz* tz;
+    VALUE old_timezone, new_timezone;
 
-    GetOrInitTZ(timezone, tz);
-    timezone_default(tz);
+    tz = timezone_default(NULL);
+    old_timezone = Data_Wrap_Struct(klass, 0, 0, tz);
 
-    return timezone;
+    if (rb_scan_args(argc, argv, "01", &new_timezone) == 1) {
+      GetOrInitTZ(new_timezone, tz);
+      timezone_default(tz);
+    }
+
+    return old_timezone;
 }
 
 /*
@@ -2883,16 +2872,12 @@ Init_time2(void)
 
     rb_cTimeZone = rb_define_class("TimeZone", rb_cObject);
 
-    //rb_define_const(rb_cTimeZone, "UTC", timezone_get(rb_cTimeZone, rb_str_new));
-
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
-    rb_define_singleton_method(rb_cTimeZone, "default", timezone_default_get, 0);
-    rb_define_singleton_method(rb_cTimeZone, "default=", timezone_default_set, 1);
-    rb_define_singleton_method(rb_cTimeZone, "local", timezone_default_get, 0);
-    rb_define_singleton_method(rb_cTimeZone, "local=", timezone_default_set, 1);
+    rb_define_singleton_method(rb_cTimeZone, "local", timezone_default_set_get, -1);
+    rb_define_alias(rb_singleton_class(rb_cTimeZone),  "default", "local");
 
-    rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
     rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
+    rb_define_alias(rb_cTimeZone,  "name", "to_s");
     rb_define_method(rb_cTimeZone, "inspect", timezone_inspect, 0);
 
 #if 0
