@@ -3,7 +3,13 @@ require File.join(File.dirname(__FILE__), 'benchmark_helper')
 fmt = "%Y-%m-%d %Z"
 str = "2007-10-10 GMT"
 
-OLD_STRPTIME = Time.method(:old_strptime)
+OLD_STRPTIME = if Time.respond_to? :old_strptime # check for ruby 1.8
+                 Time.method(:old_strptime)
+               else
+                 require 'date'
+                 DateTime.method(:strptime)
+               end
+
 NEW_STRPTIME = Time.method(:strptime)
 
 n = 50000

@@ -227,13 +227,15 @@ class TestTime < Test::Unit::TestCase
   end
 
   def test_time_interval
-    m = Mutex.new.lock
-    assert_nothing_raised {
-      Timeout.timeout(10) {
-        m.sleep(0)
+    ruby19 do
+      m = Mutex.new.lock
+      assert_nothing_raised {
+        Timeout.timeout(10) {
+          m.sleep(0)
+        }
       }
-    }
-    assert_raise(ArgumentError) { m.sleep(-1) }
+      assert_raise(ArgumentError) { m.sleep(-1) }
+    end
   end
 
   def test_to_f

@@ -29,7 +29,16 @@ end
 # allow use old ruby time in parallel with new
 # adds aditional checks and convertation
 $defs << "-DOLD_TIME_COMPAT"
-
+# check if OS use leap seconds
 check_leap_seconds()
+# Different versions compatibility
+case RUBY_VERSION
+when /^1.9/
+  $defs << '-DRUBY_TIME_19_COMPAT'
+when /^1.8/
+  $defs << '-DRUBY_TIME_18_COMPAT'
+else
+  raise 'You use unsupported ruby version'
+end
 
 create_makefile("time2")

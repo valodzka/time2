@@ -310,16 +310,16 @@ class TestDateStrptime < Test::Unit::TestCase
   def test_strptime__2
     n = 10**9
     with_tz("Japan") do  # not have dst :)
-    d = Time.local(2006,6,1)
-    366.times.each do |t|
-      d += 3600 * 24
-      
-      [
-       '%Y %m %d',
-       '%C %y %m %d',
+      d = Time.local(2006,6,1)
+      366.times.each do |t|
+        d += 3600 * 24
 
-       '%Y %j',
-       '%C %y %j',
+        [
+         '%Y %m %d',
+         '%C %y %m %d',
+
+         '%Y %j',
+         '%C %y %j',
 
 #       '%G %V %w',
 #        '%G %V %u',
@@ -334,34 +334,33 @@ class TestDateStrptime < Test::Unit::TestCase
 #        '%C %y %U %u',
 #        '%C %y %W %w',
 #        '%C %y %W %u',
-      ].each do |fmt|
-        s = d.strftime(fmt)
-        d2 = Time.strptime(s, fmt)
-        assert_equal(d, d2, [fmt, d.to_s, d2.to_s].inspect)
+        ].each do |fmt|
+          s = d.strftime(fmt)
+          d2 = Time.strptime(s, fmt)
+          assert_equal(d, d2, [fmt, d.to_s, d2.to_s].inspect)
+        end
+
+        [
+         '%Y %m %d %H %M %S',
+         '%Y %m %d %H %M %S %N',
+         '%C %y %m %d %H %M %S',
+         '%C %y %m %d %H %M %S %N',
+
+         '%Y %j %H %M %S',
+         '%Y %j %H %M %S %N',
+         '%C %y %j %H %M %S',
+         '%C %y %j %H %M %S %N',
+
+         '%s',
+         '%s %N',
+         #       '%Q',
+         #       '%Q %N',
+        ].each do |fmt|
+          s = d.strftime(fmt)
+          d2 = Time.strptime(s, fmt)
+          assert_equal(d, d2, [fmt, d.to_s, d2.to_s].inspect)
+        end
       end
-
-      [
-       '%Y %m %d %H %M %S',
-       '%Y %m %d %H %M %S %N',
-       '%C %y %m %d %H %M %S',
-       '%C %y %m %d %H %M %S %N',
-
-       '%Y %j %H %M %S',
-       '%Y %j %H %M %S %N',
-       '%C %y %j %H %M %S',
-       '%C %y %j %H %M %S %N',
-
-       '%s',
-       '%s %N',
-#       '%Q',
-#       '%Q %N',
-      ].each do |fmt|
-        s = d.strftime(fmt)
-        d2 = Time.strptime(s, fmt)
-        assert_equal(d, d2, [fmt, d.to_s, d2.to_s].inspect)
-      end
-    end
-    
     end
   end
 
@@ -390,7 +389,7 @@ class TestDateStrptime < Test::Unit::TestCase
     d = Time.strptime('073', '%j')
     assert_equal([n.year, 73, 0, 0, 0, 0],
                  [d.year, d.yday, d.hour, d.min, d.sec, d.usec])
-    
+
     d = Time.strptime('13', '%d')
     assert_equal([n.year, n.mon, 13, 0, 0, 0],
                  [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
@@ -400,7 +399,7 @@ class TestDateStrptime < Test::Unit::TestCase
      d = Time.strptime('2004', '%Y')
      assert_equal([2004, 1, 1, 0, 0, 0],
  		 [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
-    
+
      d = Time.strptime('Mar 13', '%b %d')
      assert_equal([n.year, 3, 13, 0, 0, 0],
  		 [d.year, d.mon, d.mday, d.hour, d.min, d.sec])

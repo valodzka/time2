@@ -16,12 +16,25 @@
 #include "pgtz.h"
 #include "tzfile.h"
 
-#include "ruby/ruby.h"
-#include "ruby/st.h"
 #include <sys/types.h>
 #include <errno.h>
 
-#include "ruby/encoding.h"
+#ifndef RUBY_TIME_18_COMPAT
+#  include "ruby/ruby.h"
+#  include "ruby/st.h"
+#  include "ruby/encoding.h"
+#else
+#  include "ruby.h"
+#  include "st.h"
+
+#  define st_init_strcasetable st_init_strtable
+#  define rb_enc_str_asciicompat_p(x) (1)
+#  define OBJ_UNTRUSTED(x) OBJ_TAINTED(x)
+#  define RFLOAT_VALUE(x)  (RFLOAT(x)->value)
+#  define DBL2NUM(dbl)  rb_float_new(dbl)
+#  define STRCASECMP(a, b) strcasecmp(a, b)
+   void rb_enc_copy(VALUE a, VALUE b) {}
+#endif
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -959,7 +972,7 @@ make_time_t(struct pg_tm *tptr, struct pg_tz const *tz, int utc_p)
 	tptr->tm_sec == tmp->tm_sec
 	)
 	return t;
-    
+
     return search_time_t(&buf, utc_p);
 }
 
@@ -972,7 +985,7 @@ time_utc_or_local(int argc, VALUE *argv, int utc_p, VALUE klass)
     long nsec;
 
     time_arg(argc, argv, &tm, &nsec, &tz);
-    if (!tz) 
+    if (!tz)
       tz = utc_p ? timezone_utc() : timezone_default(NULL);
     time = time_new_internal(klass, make_time_t(&tm, tz, utc_p), nsec, tz);
     if (utc_p) return time_gmtime(time);
@@ -2233,7 +2246,7 @@ time_strftime(VALUE time, VALUE format)
     }
     StringValue(format);
     if (!rb_enc_str_asciicompat_p(format)) {
-	rb_raise(rb_eArgError, "format should have ASCII compatible encoding");
+		rb_raise(rb_eArgError, "format should have ASCII compatible encoding");
     }
     format = rb_str_new4(format);
     fmt = RSTRING_PTR(format);
@@ -2704,22 +2717,22 @@ timezone_default_set_get(int argc, VALUE *argv, VALUE klass)
 /*
  *  call-seq:
  *     TimeZone.for_country(contry_name) -> array
- *  
+ *
  *  Return array of timezones for given (as ISO3166 code) country
- *     
+ *
  *     TimeZone.for_country('ES') #=> ["Europe/Madrid", "Africa/Ceuta", "Atlantic/Canary"]
  */
 static VALUE
-timezone_for_contry(VALUE klass, VALUE country) 
+timezone_for_contry(VALUE klass, VALUE country)
 {
     static VALUE countries = Qnil;;
 
     if (countries == Qnil) {
-	countries = rb_hash_new();	
+	countries = rb_hash_new();
 	rb_const_set(klass, rb_intern("COUNTRIES"), countries);
-#include "tz_countries.h"	
+#include "tz_countries.h"
     }
-    
+
     return rb_hash_aref(countries, country);
 }
 
@@ -2792,8 +2805,8 @@ const char * rb_tzdir = NULL;
 void
 Init_time2(void)
 {
-#undef rb_intern
-#define rb_intern(str) rb_intern_const(str)
+//#undef rb_intern not work on 1.8, what this mean?
+//#define rb_intern(str) rb_intern_const(str)
     VALUE tz_dir = rb_gv_get("$__tz_directory");
 #ifdef OLD_TIME_COMPAT
 	//Ponter to function time_free used to detect is object is Time
@@ -2811,7 +2824,9 @@ Init_time2(void)
     rb_cTime = rb_define_class("Time", rb_cObject);
     rb_include_module(rb_cTime, rb_mComparable);
     rb_require("time"); // defines strptime which we wil redefine later
+#ifndef RUBY_TIME_18_COMPAT
     rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
+#endif
 
     rb_define_alloc_func(rb_cTime, time_s_alloc);
     rb_define_singleton_method(rb_cTime, "now", rb_class_new_instance, -1);

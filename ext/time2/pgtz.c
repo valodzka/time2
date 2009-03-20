@@ -11,7 +11,11 @@
 #define NO_REDEFINE_TIMEFUNCS
 
 #include "c.h"
-#include <ruby/ruby.h>
+#ifndef RUBY_TIME_18_COMPAT
+#  include <ruby/ruby.h>
+#else
+#  include <ruby.h>
+#endif
 
 #include <ctype.h>
 #include <fcntl.h>

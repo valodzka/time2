@@ -62,7 +62,7 @@ Platform: ruby 1.9.2dev (2009-03-12 trunk 22918) [i686-linux]
 
 h4. Time zones conversion
 
-About 12-21 times faster than TZInfo, but could be even faster if you use <code>local</code> instead of <code>getlocal</code> which creates a new object every time
+About 12-21 times faster than TZInfo on ruby1.9 and 40-60 times faster on ruby1.8, but could be even faster if you use <code>local</code> instead of <code>getlocal</code> which creates a new object every time
 <pre>
 
 n = 100000
@@ -86,7 +86,7 @@ Benchmark.bm{|r|
 
 h4. strptime
 
-About 10-50 times faster than <code>strptime</code> from the ruby standard library (we use <code>Method#call</code> to avoid redefinition)
+About 10-50 times faster than <code>strptime</code> from the standard library on ruby1.9 and 150-40 times faster on ruby1.8.
 
 <pre>
 
