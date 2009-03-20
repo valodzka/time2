@@ -33,7 +33,7 @@
 # define TYPEOF_TIMEVAL_TV_SEC time_t
 #endif
 
-VALUE rb_cTime;
+static VALUE rb_cTime;
 VALUE rb_cTimeZone;
 
 static VALUE time_utc_offset _((VALUE));
@@ -514,7 +514,7 @@ time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz)
 	/* v[7] is wday (parsedate; ignored) */
 	tm->tm_wday = -1;
 	tm->tm_isdst = -1;
-        *tz = timezone_default(NULL);
+        *tz = NULL;
     }
 
     year = obj2long(v[0]);
@@ -939,7 +939,7 @@ search_time_t(struct pg_tm *tptr, int utc_p)
 }
 
 static pg_time_t
-make_time_t(struct pg_tm *tptr, struct pg_tz *tz, int utc_p)
+make_time_t(struct pg_tm *tptr, struct pg_tz const *tz, int utc_p)
 {
     pg_time_t t;
     struct pg_tm *tmp;
@@ -947,50 +947,36 @@ make_time_t(struct pg_tm *tptr, struct pg_tz *tz, int utc_p)
     struct pg_tm result;
 
     buf = *tptr;
-    if (utc_p) {
-	if ((t = pg_mktime(&buf, timezone_utc())) != -1)
-	    return t;
 
-	if ((tmp = GMTIME(&t, result)) &&
-	    tptr->tm_year == tmp->tm_year &&
-	    tptr->tm_mon == tmp->tm_mon &&
-	    tptr->tm_mday == tmp->tm_mday &&
-	    tptr->tm_hour == tmp->tm_hour &&
-	    tptr->tm_min == tmp->tm_min &&
-	    tptr->tm_sec == tmp->tm_sec
+    if ((t = pg_mktime(&buf, tz)) != -1)
+	return t;
+    if ((tmp = pg_localtime_r(&t, tz, &result)) &&
+	tptr->tm_year == tmp->tm_year &&
+	tptr->tm_mon == tmp->tm_mon &&
+	tptr->tm_mday == tmp->tm_mday &&
+	tptr->tm_hour == tmp->tm_hour &&
+	tptr->tm_min == tmp->tm_min &&
+	tptr->tm_sec == tmp->tm_sec
 	)
-	    return t;
-	return search_time_t(&buf, utc_p);
-    }
-    else {
-	if ((t = pg_mktime(&buf, tz)) != -1)
-	    return t;
-	if ((tmp = LOCALTIME(&t, result)) &&
-	    tptr->tm_year == tmp->tm_year &&
-	    tptr->tm_mon == tmp->tm_mon &&
-	    tptr->tm_mday == tmp->tm_mday &&
-	    tptr->tm_hour == tmp->tm_hour &&
-	    tptr->tm_min == tmp->tm_min &&
-	    tptr->tm_sec == tmp->tm_sec
-	)
-            return t;
-
-	return search_time_t(&buf, utc_p);
-    }
+	return t;
+    
+    return search_time_t(&buf, utc_p);
 }
 
 static VALUE
 time_utc_or_local(int argc, VALUE *argv, int utc_p, VALUE klass)
 {
     struct pg_tm tm;
-    struct pg_tz *tz = NULL;
+    struct pg_tz *tz;
     VALUE time;
     long nsec;
 
     time_arg(argc, argv, &tm, &nsec, &tz);
+    if (!tz) 
+      tz = utc_p ? timezone_utc() : timezone_default(NULL);
     time = time_new_internal(klass, make_time_t(&tm, tz, utc_p), nsec, tz);
     if (utc_p) return time_gmtime(time);
-    return time_localtime_with_tz(time, tz);
+    return time_localtime_with_tz(time, timezone_default(NULL));
 }
 
 /*
@@ -2382,8 +2368,9 @@ time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
  * - unknown modificators silently ignored
  * - %j replace %m and %d undepend on order of arguments
  * - document principe of gaps filling and replacement
- * - replacement not work for hours, minutes, etc
  * - %N behaves different from old strptime
+ * - '\0' in string will cause error
+ * - string with encoding
  */
 static VALUE
 time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementation
@@ -2392,19 +2379,19 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
     struct pg_tz *tz;
     VALUE time_obj;
     int utc_p;
-	long nsec = 0;
+    long nsec = 0;
     const char *p;
 
     tm.tm_year = INT_MIN;
     tm.tm_mon = INT_MIN;
-	tm.tm_mday = INT_MIN;
-	tm.tm_hour = INT_MIN;
-	tm.tm_min = INT_MIN;
-	tm.tm_sec = INT_MIN;
+    tm.tm_mday = INT_MIN;
+    tm.tm_hour = INT_MIN;
+    tm.tm_min = INT_MIN;
+    tm.tm_sec = INT_MIN;
     tm.tm_wday = 0;
-	tm.tm_yday = INT_MIN;
+    tm.tm_yday = INT_MIN;
     tm.tm_isdst = -1;
-	tm.tm_zone = NULL;
+    tm.tm_zone = NULL;
 
     p = pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec, timezone_default(NULL));
 
@@ -2450,7 +2437,7 @@ time_mdump(VALUE time)
         rb_raise(rb_eArgError, "year too big to marshal: %ld", (long)tm->tm_year);
 
     p = 0x1UL        << 31 | /*  1 */
-		IS_GMT(tobj)    << 30 | /*  1 */
+	IS_GMT(tobj) << 30 | /*  1 */
 	tm->tm_year  << 14 | /* 16 */
 	tm->tm_mon   << 10 | /*  4 */
 	tm->tm_mday  <<  5 | /*  5 */
@@ -2568,7 +2555,8 @@ time_mload(VALUE time, VALUE str)
 	tm.tm_yday = tm.tm_wday = 0;
 	tm.tm_isdst = 0;
 
-	sec = make_time_t(&tm, timezone_default(NULL), Qtrue);//TODO:should be stored?
+	// BUG? utc_p always true
+	sec = make_time_t(&tm, timezone_utc(), Qtrue);//TODO:should be stored?
 	usec = (long)(s & 0xfffff);
         nsec = usec * 1000;
 
@@ -2625,8 +2613,6 @@ time_load(VALUE klass, VALUE str)
     return time;
 }
 
-
-
 static st_table *tz_cache = NULL;
 
 static struct pg_tz*
@@ -2642,7 +2628,7 @@ timezone_cached_get(const char *name)
     if (!value) {
         struct pg_tz* tz = pg_tzset(name);
         if (!tz)
-            rb_raise(rb_eRuntimeError, "time zone \"%s\" not found", name);
+            rb_raise(rb_eArgError, "time zone \"%s\" not found", name);
         st_insert(tz_cache, (st_data_t)name, (st_data_t)tz);
         value = (st_data_t)tz;
     }
@@ -2683,47 +2669,58 @@ timezone_get(VALUE klass, VALUE name)
 
    return Data_Wrap_Struct(klass, 0, 0, tz);
 }
-
 /*
  *  call-seq:
- *     Time::Zone.default => timezone 
- *     Time::Zone.local   => timezone 
+ *     TimeZone.local(new_timezone) -> old local timezone
+ *     TimeZone.local -> current local timezone
  *
- *  Returns timezone which used as local timezone
+ *  Sets timezone which will be used as a local
  *
- *     Time::Zone.default   # => #<Time::Zone: Europe/Athens>
+ *     TimeZone.local                        # => #<TimeZone: Europe/Athens>
+ *     TimeZone.local "Japan"                # => #<TimeZone: Europe/Athens>
+ *     Time.now                              # => 2009-03-18 21:07:51 JST
+ *     TimeZone.local "US/Pacific"           # => #<TimeZone: Japan>
+ *     Time.now                              # => 2009-03-18 05:08:06 PDT
+ *     TimeZone.local = TimeZone["UTC"]      # => #<TimeZone: US/Pacific>
+ *     Time.now                              # => 2009-03-18 12:08:17 UTC
  */
 static VALUE
-timezone_default_get(VALUE klass)
+timezone_default_set_get(int argc, VALUE *argv, VALUE klass)
 {
-    struct pg_tz * default_timezone = timezone_default(NULL);
+    struct pg_tz* tz;
+    VALUE old_timezone, new_timezone;
 
-    return Data_Wrap_Struct(klass, 0, 0, default_timezone);
+    tz = timezone_default(NULL);
+    old_timezone = Data_Wrap_Struct(klass, 0, 0, tz);
+
+    if (rb_scan_args(argc, argv, "01", &new_timezone) == 1) {
+      GetOrInitTZ(new_timezone, tz);
+      timezone_default(tz);
+    }
+
+    return old_timezone;
 }
 
 /*
  *  call-seq:
- *     Time::Zone.default = timezone or it name
- *     Time::Zone.local = timezone or it name
- *
- *  Sets timezone which will be used as local timezone
- *
- *     Time::Zone.default = "Japan"            # => "Japan"
- *     Time.now                                # => 2009-03-18 21:07:51 JST
- *     Time::Zone.default = "US/Pacific"       # => "US/Pacific"
- *     Time.now                                # => 2009-03-18 05:08:06 PDT
- *     Time::Zone.default = Time::Zone["UTC"]  # => "UTC"
- *     Time.now                                # => 2009-03-18 12:08:17 UTC
+ *     TimeZone.for_country(contry_name) -> array
+ *  
+ *  Return array of timezones for given (as ISO3166 code) country
+ *     
+ *     TimeZone.for_country('ES') #=> ["Europe/Madrid", "Africa/Ceuta", "Atlantic/Canary"]
  */
 static VALUE
-timezone_default_set(VALUE klass, VALUE timezone)
+timezone_for_contry(VALUE klass, VALUE country) 
 {
-    struct pg_tz* tz;
+    static VALUE countries = Qnil;;
 
-    GetOrInitTZ(timezone, tz);
-    timezone_default(tz);
-
-    return timezone;
+    if (countries == Qnil) {
+	countries = rb_hash_new();	
+	rb_const_set(klass, rb_intern("COUNTRIES"), countries);
+#include "tz_countries.h"	
+    }
+    
+    return rb_hash_aref(countries, country);
 }
 
 /*
@@ -2753,7 +2750,7 @@ timezone_name(VALUE timezone)
  *
  *  Return a string describing this timezone object.
  *
- *     tz.inspect     # => #<Time::Zone: Europe/Berlin>
+ *     tz.inspect     # => #<TimeZone: Europe/Berlin>
  */
 static VALUE
 timezone_inspect(VALUE timezone)
@@ -2813,8 +2810,8 @@ Init_time2(void)
 
     rb_cTime = rb_define_class("Time", rb_cObject);
     rb_include_module(rb_cTime, rb_mComparable);
-	rb_require("time"); // defines strptime which we wil redefine later
-	rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
+    rb_require("time"); // defines strptime which we wil redefine later
+    rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
 
     rb_define_alloc_func(rb_cTime, time_s_alloc);
     rb_define_singleton_method(rb_cTime, "now", rb_class_new_instance, -1);
@@ -2890,18 +2887,16 @@ Init_time2(void)
     rb_define_method(rb_cTime, "_dump", time_dump, -1);
     rb_define_singleton_method(rb_cTime, "_load", time_load, 1);
 
-    rb_cTimeZone = rb_define_class_under(rb_cTime, "Zone", rb_cObject);
-
-    //rb_define_const(rb_cTimeZone, "UTC", timezone_get(rb_cTimeZone, rb_str_new));
+    rb_cTimeZone = rb_define_class("TimeZone", rb_cObject);
 
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
-    rb_define_singleton_method(rb_cTimeZone, "default", timezone_default_get, 0);
-    rb_define_singleton_method(rb_cTimeZone, "default=", timezone_default_set, 1);
-    rb_define_singleton_method(rb_cTimeZone, "local", timezone_default_get, 0);
-    rb_define_singleton_method(rb_cTimeZone, "local=", timezone_default_set, 1);
+    rb_define_singleton_method(rb_cTimeZone, "local", timezone_default_set_get, -1);
+    rb_define_alias(rb_singleton_class(rb_cTimeZone),  "default", "local");
+    rb_define_singleton_method(rb_cTimeZone, "for_country", timezone_for_contry, 1);
 
-    rb_define_method(rb_cTimeZone, "name", timezone_name, 0);
+
     rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
+    rb_define_alias(rb_cTimeZone,  "name", "to_s");
     rb_define_method(rb_cTimeZone, "inspect", timezone_inspect, 0);
 
 #if 0

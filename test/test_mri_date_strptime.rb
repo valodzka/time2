@@ -309,8 +309,7 @@ class TestDateStrptime < Test::Unit::TestCase
 
   def test_strptime__2
     n = 10**9
-    init_tz = Time::Zone.default
-    Time::Zone.default = "Japan" # not have dst :)
+    with_tz("Japan") do  # not have dst :)
     d = Time.local(2006,6,1)
     366.times.each do |t|
       d += 3600 * 24
@@ -363,7 +362,7 @@ class TestDateStrptime < Test::Unit::TestCase
       end
     end
     
-    Time::Zone.default = init_tz
+    end
   end
 
   def test_strptime__minus

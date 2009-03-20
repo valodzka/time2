@@ -4,9 +4,8 @@ require 'timetz'
 require 'test/unit'
 
 def with_tz(tz)
-  before = Time::Zone.default
-  Time::Zone.default = tz
+  before = TimeZone.local(tz)
   yield
 ensure
-  Time::Zone.default = before
+  TimeZone.local(before)
 end

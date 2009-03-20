@@ -42,10 +42,11 @@ end
 time2_dir = "ext/time2/"
 time2_so = "#{time2_dir}time2.#{Config::CONFIG['DLEXT']}"
 time2_files = FileList[
-  "#{time2_dir}/*.c",
-  "#{time2_dir}/*.h",
-  "#{time2_dir}/extconf.rb",
-  "#{time2_dir}/Makefile",
+  "#{time2_dir}*.c",
+  "#{time2_dir}*.h",
+  "#{time2_dir}extconf.rb",
+  "#{time2_dir}Makefile",
+  "#{time2_dir}tz_countries.h",
   "lib"
 ]
 task :time2 => ["#{time2_dir}Makefile", time2_so]
@@ -63,4 +64,26 @@ file "#{time2_dir}Makefile" => "#{time2_dir}extconf.rb" do
   end
 end
 
+file "#{time2_dir}tz_countries.h" => "zoneinfo/zone.tab" do  
+  countries = {}
+
+  IO.foreach("zoneinfo/zone.tab") do |line|
+    line.strip!
+    next if line =~ /^#/ || line.empty?
+    # example:
+    #   AR	-3124-06411	America/Argentina/Cordoba	most locations (CB, CC, CN, ER, FM, MN, SE, SF)
+    if line =~ /^([A-Z]{2})\t+[+-]\d+[+-]\d+\t+(\S+)(\t.*)?$/
+      (countries[$1] ||= []) << $2     
+    else
+      puts "not match #{line}"
+    end
+  end
+  
+  File.open("#{time2_dir}tz_countries.h", "w") {|src|
+    countries.each{|k,zones|
+      ary = "rb_ary_new3(#{zones.size},\n\t\t#{zones.map{|z| %Q[rb_str_new("#{z}", #{z.length})] }.join(",\n\t\t")})"
+      src.puts "rb_hash_aset(countries, rb_str_new(\"#{k}\", #{k.size}), \n\t#{ary});\n\n"
+    }
+  }  
+end
 
