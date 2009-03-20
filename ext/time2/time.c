@@ -2289,9 +2289,6 @@ time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
 	struct pg_tm tm_now;
 	int fill_now = 1;
 
-	//if (tm->tm_yday != INT_MIN) {
-	  //}
-
 	if (tm->tm_year == INT_MIN) {
 		pg_time_t now = time(NULL);
 		pg_localtime_r(&now, tz, &tm_now);
@@ -2338,7 +2335,7 @@ time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
  *
  * Convert the <i>string</i> to time, using the format specified by <i>format</i>
  *
- * The format is composed of zero or more directives.Each directive is composed
+ * The format is composed of zero or more directives. Each directive is composed
  * of one of the following:
  * - one or more white-space characters;
  * - an ordinary character (neither '%' nor a white-space character);
