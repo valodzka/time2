@@ -7,3 +7,4 @@
 *.pdb
 *.def
 Makefile
+mkmf.log
