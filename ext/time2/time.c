@@ -33,7 +33,7 @@
 # define TYPEOF_TIMEVAL_TV_SEC time_t
 #endif
 
-VALUE rb_cTime;
+static VALUE rb_cTime;
 VALUE rb_cTimeZone;
 
 static VALUE time_utc_offset _((VALUE));
