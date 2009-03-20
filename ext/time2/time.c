@@ -2677,12 +2677,12 @@ timezone_get(VALUE klass, VALUE name)
 
 /*
  *  call-seq:
- *     Time::Zone.default => timezone 
- *     Time::Zone.local   => timezone 
+ *     TimeZone.default => timezone 
+ *     TimeZone.local   => timezone 
  *
  *  Returns timezone which used as local timezone
  *
- *     Time::Zone.default   # => #<Time::Zone: Europe/Athens>
+ *     TimeZone.local   # => #<TimeZone: Europe/Athens>
  */
 static VALUE
 timezone_default_get(VALUE klass)
@@ -2694,17 +2694,17 @@ timezone_default_get(VALUE klass)
 
 /*
  *  call-seq:
- *     Time::Zone.default = timezone or it name
- *     Time::Zone.local = timezone or it name
+ *     TimeZone.default = timezone or it name
+ *     TimeZone.local = timezone or it name
  *
  *  Sets timezone which will be used as local timezone
  *
- *     Time::Zone.default = "Japan"            # => "Japan"
- *     Time.now                                # => 2009-03-18 21:07:51 JST
- *     Time::Zone.default = "US/Pacific"       # => "US/Pacific"
- *     Time.now                                # => 2009-03-18 05:08:06 PDT
- *     Time::Zone.default = Time::Zone["UTC"]  # => "UTC"
- *     Time.now                                # => 2009-03-18 12:08:17 UTC
+ *     TimeZone.local = "Japan"              # => "Japan"
+ *     Time.now                              # => 2009-03-18 21:07:51 JST
+ *     TimeZone.local = "US/Pacific"         # => "US/Pacific"
+ *     Time.now                              # => 2009-03-18 05:08:06 PDT
+ *     TimeZone.default = TimeZone["UTC"]    # => "UTC"
+ *     Time.now                              # => 2009-03-18 12:08:17 UTC
  */
 static VALUE
 timezone_default_set(VALUE klass, VALUE timezone)
@@ -2744,7 +2744,7 @@ timezone_name(VALUE timezone)
  *
  *  Return a string describing this timezone object.
  *
- *     tz.inspect     # => #<Time::Zone: Europe/Berlin>
+ *     tz.inspect     # => #<TimeZone: Europe/Berlin>
  */
 static VALUE
 timezone_inspect(VALUE timezone)
@@ -2804,8 +2804,8 @@ Init_time2(void)
 
     rb_cTime = rb_define_class("Time", rb_cObject);
     rb_include_module(rb_cTime, rb_mComparable);
-	rb_require("time"); // defines strptime which we wil redefine later
-	rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
+    rb_require("time"); // defines strptime which we wil redefine later
+    rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
 
     rb_define_alloc_func(rb_cTime, time_s_alloc);
     rb_define_singleton_method(rb_cTime, "now", rb_class_new_instance, -1);
@@ -2881,7 +2881,7 @@ Init_time2(void)
     rb_define_method(rb_cTime, "_dump", time_dump, -1);
     rb_define_singleton_method(rb_cTime, "_load", time_load, 1);
 
-    rb_cTimeZone = rb_define_class_under(rb_cTime, "Zone", rb_cObject);
+    rb_cTimeZone = rb_define_class("TimeZone", rb_cObject);
 
     //rb_define_const(rb_cTimeZone, "UTC", timezone_get(rb_cTimeZone, rb_str_new));
 

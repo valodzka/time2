@@ -16,7 +16,7 @@ begin
   n = 500000
   t = Time.now.utc
   tz1 = TZInfo::Timezone.get('US/Pacific')
-  tz2 = Time::Zone['US/Pacific']
+  tz2 = TimeZone['US/Pacific']
 
   Benchmark.benchmark("UTC->US/Pacific" + Benchmark::CAPTION, WIDTH, Benchmark::FMTSTR){|r| 
     r.report("TZInfo"){ 
@@ -24,7 +24,7 @@ begin
         tz1.utc_to_local(t)
       } 
     }
-    r.report("Time::Zone"){ 
+    r.report("TimeZone"){ 
       n.times{
         t.getlocal(tz2)
       } 

@@ -18,11 +18,11 @@ Short <code>irb</code> session:
 <pre>
 
 $ruby -rtimetz -S irb
->> Time::Zone.default
-=> #<Time::Zone:Europe/Minsk>
+>> TimeZone.default
+=> #<TimeZone: Europe/Minsk>
 >> Time.now
 => 2009-03-14 23:27:08 +0200
->> Time::Zone.default = "Japan"
+>> TimeZone.local = "Japan"
 => "Japan"
 >> Time.now
 => 2009-03-15 06:27:26 +0900
@@ -31,8 +31,8 @@ $ruby -rtimetz -S irb
 
 >> t = Time.now
 => 2009-03-15 06:27:44 +0900
->> tz = Time::Zone["US/Pacific"]
-=> #<Time::Zone:US/Pacific>
+>> tz = TimeZone["US/Pacific"]
+=> #<TimeZone: US/Pacific>
 >> t.localtime(tz)
 => 2009-03-14 14:27:44 -0700
 >> t.dst?
@@ -41,11 +41,6 @@ $ruby -rtimetz -S irb
 => "PDT"
 >> tz.name
 => "US/Pacific"
-
->> t = Time.local(1, 1, 1, 1, 1, 2009, nil, nil, false, tz)
-=> 2009-01-01 01:01:01 -0800
->> t.dst?
-=> false
 
 </pre>
 
@@ -60,7 +55,7 @@ About 13 times faster than TZInfo, but could be even faster if you use <code>loc
 
 n = 100000
 tz1 = TZInfo::Timezone.get('US/Pacific')
-tz2 = Time::Zone['US/Pacific']
+tz2 = TimeZone['US/Pacific']
 
 Benchmark.bm{|r|
   r.report{
