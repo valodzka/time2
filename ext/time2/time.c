@@ -2616,8 +2616,6 @@ time_load(VALUE klass, VALUE str)
     return time;
 }
 
-
-
 static st_table *tz_cache = NULL;
 
 static struct pg_tz*
@@ -2704,6 +2702,28 @@ timezone_default_set_get(int argc, VALUE *argv, VALUE klass)
     }
 
     return old_timezone;
+}
+
+/*
+ *  call-seq:
+ *     TimeZone.for_country(contry_name) -> array
+ *  
+ *  Return array of timezones for given (as ISO3166 code) country
+ *     
+ *     TimeZone.for_country('ES') #=> ["Europe/Madrid", "Africa/Ceuta", "Atlantic/Canary"]
+ */
+static VALUE
+timezone_for_contry(VALUE klass, VALUE country) 
+{
+    static VALUE countries = Qnil;;
+
+    if (countries == Qnil) {
+	countries = rb_hash_new();	
+	rb_const_set(klass, rb_intern("COUNTRIES"), countries);
+#include "tz_countries.h"	
+    }
+    
+    return rb_hash_aref(countries, country);
 }
 
 /*
@@ -2875,6 +2895,8 @@ Init_time2(void)
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
     rb_define_singleton_method(rb_cTimeZone, "local", timezone_default_set_get, -1);
     rb_define_alias(rb_singleton_class(rb_cTimeZone),  "default", "local");
+    rb_define_singleton_method(rb_cTimeZone, "for_country", timezone_for_contry, 1);
+
 
     rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
     rb_define_alias(rb_cTimeZone,  "name", "to_s");
