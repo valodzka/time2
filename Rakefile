@@ -2,15 +2,14 @@ require 'rake'
 require 'rake/clean'
 require 'rake/rdoctask'
 require 'rake/testtask'
-#require 'rdoc/rdoc'
 
 BIN = "*.{bundle,so,o,obj,pdb,lib,def,exp}"
 CLEAN.include ["ext/time2/#{BIN}", "lib/**/#{BIN}", 'ext/time2/Makefile',
-               '**/.*.sw?', '*.gem', '.config', 'pkg', 'html']
+               'ext/time2/tz_countries.h', '**/.*.sw?', '*.gem', '.config', 'pkg', 'html']
 
 Rake::TestTask.new do |t|
-  t.libs = []
   t.test_files = FileList['test/runner.rb']
+  #t.test_files = FileList['test/test_*.rb']
   t.verbose = true
 end
 
@@ -64,7 +63,7 @@ file "#{time2_dir}Makefile" => "#{time2_dir}extconf.rb" do
   end
 end
 
-file "#{time2_dir}tz_countries.h" => "zoneinfo/zone.tab" do  
+file "#{time2_dir}tz_countries.h" => "zoneinfo/zone.tab" do
   countries = {}
 
   IO.foreach("zoneinfo/zone.tab") do |line|
@@ -73,17 +72,18 @@ file "#{time2_dir}tz_countries.h" => "zoneinfo/zone.tab" do
     # example:
     #   AR	-3124-06411	America/Argentina/Cordoba	most locations (CB, CC, CN, ER, FM, MN, SE, SF)
     if line =~ /^([A-Z]{2})\t+[+-]\d+[+-]\d+\t+(\S+)(\t.*)?$/
-      (countries[$1] ||= []) << $2     
+      (countries[$1] ||= []) << $2
     else
       puts "not match #{line}"
     end
   end
-  
+
+  puts "generating tz_countries.h, #{countries.size} entries"
   File.open("#{time2_dir}tz_countries.h", "w") {|src|
     countries.each{|k,zones|
       ary = "rb_ary_new3(#{zones.size},\n\t\t#{zones.map{|z| %Q[rb_str_new("#{z}", #{z.length})] }.join(",\n\t\t")})"
       src.puts "rb_hash_aset(countries, rb_str_new(\"#{k}\", #{k.size}), \n\t#{ary});\n\n"
     }
-  }  
+  }
 end
 
