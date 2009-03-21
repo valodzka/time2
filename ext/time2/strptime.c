@@ -59,7 +59,7 @@
 #include "pgtz.h"
 #include "tzfile.h"
 
-//#define TZ_STRLEN_MAX 255
+/*#define TZ_STRLEN_MAX 255*/
 static const struct pg_time_locale {
   const char *wday[7];
   const char *weekday[7];
@@ -112,7 +112,7 @@ _pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, long *nsec, str
 	int	i, len;
 	int Ealternative, Oalternative;
 	struct pg_time_locale const *loc = &pgDefaultTimeLocale;
-	int has_am_pm = 0; // 1 - AM, 2 - PM
+	int has_am_pm = 0; /* 1 - AM, 2 - PM */
 
 	ptr = fmt;
 	while (*ptr != 0) {
@@ -362,8 +362,6 @@ label:
 			if (i > 53)
 				return 0;
 			else {
-			  //if (c == 'U')
-			  //else
 
 			}
 
@@ -466,8 +464,8 @@ label:
 					ptr++;
 			break;
 
-		case 'Q': // number of miliseconds since the epoch (1970-01-01 00:00:00 UTC)
-		case 's': // number of seconds since the epoch (1970-01-01 00:00:00 UTC)
+		case 'Q': /* number of miliseconds since the epoch (1970-01-01 00:00:00 UTC) */
+		case 's': /* number of seconds since the epoch (1970-01-01 00:00:00 UTC) */
 			{
 			char *cp;
 			int sverrno;
@@ -550,7 +548,7 @@ label:
 			if (cp - buf) {
 				strncpy(zonestr, buf, TZ_STRLEN_MAX);
 				zonestr[TZ_STRLEN_MAX] = '\0';
-				// TODO: normal implementation
+				/* TODO: normal implementation */
 				if (0 == strcmp(zonestr, "GMT") ||
 					0 == strcmp(zonestr, "Z") ||
 					0 == strcmp(zonestr, "UTC")) {
@@ -559,10 +557,11 @@ label:
 				else {
 				  rb_notimplement();
 				}
-				//} else if (0 == strcmp(zonestr, tzname[0])) {
-				    //tm->tm_isdst = 0;
-				//} else if (0 == strcmp(zonestr, tzname[1])) {
-				  //  tm->tm_isdst = 1;
+				/*
+				} else if (0 == strcmp(zonestr, tzname[0])) {
+				    tm->tm_isdst = 0;
+				} else if (0 == strcmp(zonestr, tzname[1])) {
+				  tm->tm_isdst = 1; */
 				buf += cp - buf;
 			}
 			}

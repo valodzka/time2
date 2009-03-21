@@ -100,16 +100,6 @@ static struct state gmtmem;
 
 static int	gmt_is_set = 0;
 
-/*
- * Section 4.12.3 of X3.159-1989 requires that
- *	Except for the strftime function, these functions [asctime,
- *	ctime, gmtime, localtime] return values in one of two static
- *	objects: a broken-down time structure and an array of char.
- * Thanks to Paul Eggert for noting this.
- */
-
-//static struct pg_tm tm;
-
 
 static long
 detzcode(const char *codep)

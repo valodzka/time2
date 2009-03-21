@@ -408,7 +408,7 @@ rb_time_timespec_static(VALUE time)
     return time_timespec(time, Qfalse);
 }
 
-//TODO:HACK
+/* TODO:HACK */
 struct timespec rb_time_timespec(VALUE time) { return rb_time_timespec_static(time); }
 
 /*
@@ -443,7 +443,7 @@ time_s_at(int argc, VALUE *argv, VALUE klass)
 	  ts.tv_nsec = NUM2LONG(rb_funcall(t, id_mul, 1, INT2FIX(1000)));
     }
     else {
-	  //HACK: to sure that function will be caled from this module, not from ruby library
+		/* HACK: to sure that function will be caled from this module, not from ruby library */
 	  ts = rb_time_timespec_static(time);
     }
     t = time_new_internal(klass, ts.tv_sec, ts.tv_nsec, timezone_default(NULL));
@@ -2297,7 +2297,7 @@ time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
 		fill_now = 0;
 
 	if (tm->tm_yday != INT_MIN) {
-		// let mktime will detect appropriate month and day
+		/* let mktime detect appropriate month and day */
 		tm->tm_mday = tm->tm_yday + 1;
 		tm->tm_mon = 0;
 	}
@@ -2386,7 +2386,7 @@ time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
  * - string with encoding
  */
 static VALUE
-time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementation
+time_strptime(VALUE klass, VALUE str, VALUE format) 
 {
     struct pg_tm tm;
     struct pg_tz *tz;
@@ -2414,7 +2414,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
         tz = timezone_utc();
         utc_p = 1;
     }
-    else {//currently no timezone support
+    else {/* currently no timezone support */
         tz = timezone_default(NULL);
         utc_p = 0;
     }
@@ -2431,7 +2431,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format) // quick unsafe implementati
 static VALUE
 time_mdump(VALUE time)
 {
-    struct time_object *tobj;//TODO:serialize timezone
+    struct time_object *tobj;/* TODO:serialize timezone */
     struct pg_tm *tm;
     unsigned long p, s;
     char buf[8];
@@ -2568,8 +2568,8 @@ time_mload(VALUE time, VALUE str)
 	tm.tm_yday = tm.tm_wday = 0;
 	tm.tm_isdst = 0;
 
-	// BUG? utc_p always true
-	sec = make_time_t(&tm, timezone_utc(), Qtrue);//TODO:should be stored?
+	/* BUG? utc_p always true */
+	sec = make_time_t(&tm, timezone_utc(), Qtrue);/* TODO:should be stored? */
 	usec = (long)(s & 0xfffff);
 	nsec = usec * 1000;
 
@@ -2596,7 +2596,7 @@ end_submicro: ;
 
     GetTimeval(time, tobj);
     tobj->tm_got = 0;
-	if (gmt) { //TODO: normal deserialisation
+	if (gmt) { /* TODO: normal deserialisation */
 		tobj->tz = timezone_utc();
 		GMT_TRUE(tobj);
 	}
@@ -2622,7 +2622,7 @@ time_load(VALUE klass, VALUE str)
 {
     VALUE time = time_s_alloc(klass);
 
-    time_mload(time, str);//TODO:set tz
+    time_mload(time, str); /* TODO:set tz */
     return time;
 }
 
@@ -2663,7 +2663,7 @@ timezone_utc()
 static struct pg_tz*
 timezone_default(struct pg_tz *dflt)
 {
-    //TODO:add to cache
+    /* TODO:add to cache */
     static struct pg_tz* tz = NULL;
 
     if (!tz && !dflt) {
@@ -2812,12 +2812,12 @@ Init_time2(void)
 #endif
     VALUE tz_dir;
 #ifdef OLD_TIME_COMPAT
-	//Ponter to function time_free used to detect is object is Time
-	//We get this pointer and use it to behave like old Time
+	/* Ponter to function time_free used to detect is object is Time
+	   We get this pointer and use it to behave like old Time */
     VALUE old_time = rb_funcall(rb_const_get(rb_cObject, rb_intern("Time")), rb_intern("now"), 0);
     time_free = RDATA(old_time)->dfree;
 #endif
-	rb_require("tzdata"); // should define $__tz_directory
+	rb_require("tzdata"); /* should define $__tz_directory */
 	tz_dir = rb_gv_get("$__tz_directory");
     rb_tzdir = StringValueCStr(tz_dir);
 
@@ -2827,7 +2827,7 @@ Init_time2(void)
 
     rb_cTime = rb_define_class("Time", rb_cObject);
     rb_include_module(rb_cTime, rb_mComparable);
-    rb_require("time"); // defines strptime which we wil redefine later
+    rb_require("time"); /* defines strptime which we wil redefine later */
 #ifndef RUBY_TIME_18_COMPAT
     rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
 #endif
