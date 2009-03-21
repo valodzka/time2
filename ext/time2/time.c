@@ -2806,16 +2806,19 @@ const char * rb_tzdir = NULL;
 void
 Init_time2(void)
 {
-//#undef rb_intern not work on 1.8, what this mean?
-//#define rb_intern(str) rb_intern_const(str)
-    VALUE tz_dir = rb_gv_get("$__tz_directory");
+#ifndef RUBY_TIME_18_COMPAT
+#  undef rb_intern
+#  define rb_intern(str) rb_intern_const(str)
+#endif
+    VALUE tz_dir;
 #ifdef OLD_TIME_COMPAT
 	//Ponter to function time_free used to detect is object is Time
 	//We get this pointer and use it to behave like old Time
     VALUE old_time = rb_funcall(rb_const_get(rb_cObject, rb_intern("Time")), rb_intern("now"), 0);
     time_free = RDATA(old_time)->dfree;
 #endif
-
+	rb_require("tzdata"); // should define $__tz_directory
+	tz_dir = rb_gv_get("$__tz_directory")
     rb_tzdir = StringValueCStr(tz_dir);
 
     id_divmod = rb_intern("divmod");
