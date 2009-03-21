@@ -1,4 +1,4 @@
-require "test/unit"
+require File.join(File.dirname(__FILE__), 'helper')
 require "fileutils"
 require "tmpdir"
 
@@ -34,7 +34,7 @@ class TestFileExhaustive < Test::Unit::TestCase
   def make_file(content, file = @file)
     open(file, "w") {|fh| fh << content }
   end
-  
+ 
   def make_tmp_filename(prefix)
     @hardlinkfile = @dir + "/" + prefix + File.basename(__FILE__) + ".#{$$}.test"
   end

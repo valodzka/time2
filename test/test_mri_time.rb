@@ -1,5 +1,4 @@
-require File.join(File.dirname(__FILE__), 'test_helper')
-require 'test/unit'
+require File.join(File.dirname(__FILE__), 'helper')
 require 'rational'
 require 'timeout'
 

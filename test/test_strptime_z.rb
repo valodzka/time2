@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'test_helper')
+require File.join(File.dirname(__FILE__), 'helper')
 
 class TestTimeStrptimeZone < Test::Unit::TestCase
   def test_procent_z_local_zone

@@ -1,6 +1,6 @@
 $: << File.join(File.dirname(__FILE__), '..', 'lib')
 
-require 'timetz'
+require 'time2'
 require 'test/unit'
 
 def ruby19

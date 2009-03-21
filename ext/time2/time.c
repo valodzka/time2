@@ -2818,7 +2818,7 @@ Init_time2(void)
     time_free = RDATA(old_time)->dfree;
 #endif
 	rb_require("tzdata"); // should define $__tz_directory
-	tz_dir = rb_gv_get("$__tz_directory")
+	tz_dir = rb_gv_get("$__tz_directory");
     rb_tzdir = StringValueCStr(tz_dir);
 
     id_divmod = rb_intern("divmod");

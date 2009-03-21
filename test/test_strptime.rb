@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'test_helper')
+require File.join(File.dirname(__FILE__), 'helper')
 
 class TestDateStrptime < Test::Unit::TestCase
   def test_fill_gaps_if_high_given

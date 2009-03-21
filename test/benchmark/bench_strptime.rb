@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'benchmark_helper')
+require File.join(File.dirname(__FILE__), 'helper')
 
 fmt = "%Y-%m-%d %Z"
 str = "2007-10-10 GMT"

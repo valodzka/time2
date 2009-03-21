@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'test_helper')
+require File.join(File.dirname(__FILE__), 'helper')
 
 class TestTimeStrptimeAMPM < Test::Unit::TestCase
   def test_am_pm_before_after_hour

@@ -10,7 +10,7 @@ CLEAN.include ["ext/time2/#{BIN}", "lib/**/#{BIN}", 'ext/time2/Makefile',
 
 Rake::TestTask.new do |t|
   t.libs = []
-  t.test_files = FileList['test/test_*.rb']
+  t.test_files = FileList['test/runner.rb']
   t.verbose = true
 end
 
