@@ -54,6 +54,7 @@
 #  define  TOLOWER(c) tolower((unsigned char)(c))
 #  define  TOUPPER(c) toupper((unsigned char)(c))
 #endif
+#include "c.h"
 #include "pgtz.h"
 
 #ifndef GAWK
@@ -491,43 +492,11 @@ rb_strftime(char *s, size_t maxsize, const char *format, const struct pg_tm *tim
 				off = 0;
 			}
 			else {
-#ifdef HAVE_TM_NAME
-				/*
-				 * Systems with tm_name probably have tm_tzadj as
-				 * secs west of GMT.  Convert to mins east of GMT.
-				 */
-				off = -timeptr->tm_tzadj / 60;
-#else /* !HAVE_TM_NAME */
-#ifdef HAVE_TM_ZONE
 				/*
 				 * Systems with tm_zone probably have tm_gmtoff as
 				 * secs east of GMT.  Convert to mins east of GMT.
 				 */
 				off = timeptr->tm_gmtoff / 60;
-#else /* !HAVE_TM_ZONE */
-#if HAVE_VAR_TIMEZONE
-#if HAVE_VAR_ALTZONE
-				off = -(daylight ? timezone : altzone) / 60;
-#else
-				off = -timezone / 60;
-#endif
-#else /* !HAVE_VAR_TIMEZONE */
-#ifdef HAVE_GETTIMEOFDAY
-				gettimeofday(&tv, &zone);
-				off = -zone.tz_minuteswest;
-#else
-				/* no timezone info, then calc by myself */
-				{
-					struct tm utc;
-					time_t now;
-					time(&now);
-					utc = *gmtime(&now);
-					off = (long)((now - mktime(&utc)) / 60);
-				}
-#endif
-#endif /* !HAVE_VAR_TIMEZONE */
-#endif /* !HAVE_TM_ZONE */
-#endif /* !HAVE_TM_NAME */
 			}
 			if (off < 0) {
 				off = -off;
@@ -791,20 +760,6 @@ rb_strftime(char *s, size_t maxsize, const char *format, const struct pg_tm *tim
 		return (s - start);
 	} else
 		return 0;
-}
-
-/* isleap --- is a year a leap year? */
-
-#ifndef __STDC__
-static int
-isleap(year)
-long year;
-#else
-static int
-isleap(long year)
-#endif
-{
-	return ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0);
 }
 
 

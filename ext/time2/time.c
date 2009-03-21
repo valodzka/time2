@@ -1512,26 +1512,9 @@ time_asctime(VALUE time)
 #endif
 
 
-#define RB_STRFTIME(s, maxsize, format, timeptr, ts, gmt, ret) do {	\
-	struct tm old_system_tm;					\
-    	old_system_tm.tm_sec = (timeptr)->tm_sec;			\
-	old_system_tm.tm_min = (timeptr)->tm_min;			\
-	old_system_tm.tm_hour = (timeptr)->tm_hour;			\
-	old_system_tm.tm_mday = (timeptr)->tm_mday;			\
-	old_system_tm.tm_mon = (timeptr)->tm_mon;			\
-	old_system_tm.tm_year = (timeptr)->tm_year;			\
-	old_system_tm.tm_wday = (timeptr)->tm_wday;			\
-	old_system_tm.tm_yday = (timeptr)->tm_yday;			\
-	old_system_tm.tm_isdst = (timeptr)->tm_isdst;			\
-	COPY_GMTOFF(old_system_tm.tm_gmtoff = (timeptr)->tm_gmtoff);	\
-	COPY_TZ(old_system_tm.tm_zone = (timeptr)->tm_zone);		\
-        len = rb_strftime(s, maxsize, format,				\
-			  &old_system_tm, ts, gmt);			\
-    } while(0)
-
 size_t
 rb_strftime(char *s, size_t maxsize, const char *format,
-	    const struct tm *timeptr, const struct timespec *ts, int gmt);
+	    const struct pg_tm *timeptr, const struct timespec *ts, int gmt);
 
 /*
  *  call-seq:
@@ -1561,9 +1544,9 @@ time_to_s(VALUE time)
 	time_get_tm(time, IS_GMT(tobj));
     }
 
-    RB_STRFTIME(buf, sizeof(buf),
+    len = rb_strftime(buf, sizeof(buf),
 		IS_GMT(tobj) ? "%Y-%m-%d %H:%M:%S UTC" : "%Y-%m-%d %H:%M:%S %z",
-		&tobj->tm, &tobj->ts, IS_GMT(tobj), len);
+		&tobj->tm, &tobj->ts, IS_GMT(tobj));
 
     return rb_str_new(buf, len);
 }
@@ -2163,12 +2146,12 @@ rb_strftime_alloc(char **buf, const char *format,
 	return 0;
     }
     errno = 0;
-    RB_STRFTIME(*buf, SMALLBUF, format, time, ts, gmt, len);
+    len = rb_strftime(*buf, SMALLBUF, format, time, ts, gmt);
     if (len != 0 || (**buf == '\0' && errno != ERANGE)) return len;
     for (size=1024; ; size*=2) {
 	*buf = xmalloc(size);
 	(*buf)[0] = '\0';
-	RB_STRFTIME(*buf, size, format, time, ts, gmt, len);
+	len = rb_strftime(*buf, size, format, time, ts, gmt);
 	/*
 	 * buflen can be zero EITHER because there's not enough
 	 * room in the string, or because the control command
