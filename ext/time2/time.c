@@ -2461,12 +2461,12 @@ time_mdump(VALUE time)
     nsec = tobj->ts.tv_nsec % 1000;
 
     for (i=0; i<4; i++) {
-	buf[i] = (unsigned char)p;
-	p = RSHIFT(p, 8);
+		buf[i] = (unsigned char)p;
+		p = RSHIFT(p, 8);
     }
     for (i=4; i<8; i++) {
-	buf[i] = (unsigned char)s;
-	s = RSHIFT(s, 8);
+		buf[i] = (unsigned char)s;
+		s = RSHIFT(s, 8);
     }
 
     str = rb_str_new(buf, 8);
@@ -2571,24 +2571,24 @@ time_mload(VALUE time, VALUE str)
 	// BUG? utc_p always true
 	sec = make_time_t(&tm, timezone_utc(), Qtrue);//TODO:should be stored?
 	usec = (long)(s & 0xfffff);
-        nsec = usec * 1000;
+	nsec = usec * 1000;
 
-        if (submicro != Qnil) {
-            unsigned char *ptr;
-            long len;
-            int digit;
-            ptr = (unsigned char*)StringValuePtr(submicro);
-            len = RSTRING_LEN(submicro);
-            if (0 < len) {
-                if (10 <= (digit = ptr[0] >> 4)) goto end_submicro;
-                nsec += digit * 100;
-                if (10 <= (digit = ptr[0] & 0xf)) goto end_submicro;
-                nsec += digit * 10;
-            }
-            if (1 < len) {
-                if (10 <= (digit = ptr[1] >> 4)) goto end_submicro;
-                nsec += digit;
-            }
+	if (submicro != Qnil) {
+		unsigned char *ptr;
+		long len;
+		int digit;
+		ptr = (unsigned char*)StringValuePtr(submicro);
+		len = RSTRING_LEN(submicro);
+		if (0 < len) {
+			if (10 <= (digit = ptr[0] >> 4)) goto end_submicro;
+			nsec += digit * 100;
+			if (10 <= (digit = ptr[0] & 0xf)) goto end_submicro;
+			nsec += digit * 10;
+		}
+		if (1 < len) {
+			if (10 <= (digit = ptr[1] >> 4)) goto end_submicro;
+			nsec += digit;
+		}
 end_submicro: ;
         }
     }
@@ -2682,6 +2682,7 @@ timezone_get(VALUE klass, VALUE name)
 
    return Data_Wrap_Struct(klass, 0, 0, tz);
 }
+
 /*
  *  call-seq:
  *     TimeZone.local(new_timezone) -> old local timezone
@@ -2694,7 +2695,7 @@ timezone_get(VALUE klass, VALUE name)
  *     Time.now                              # => 2009-03-18 21:07:51 JST
  *     TimeZone.local "US/Pacific"           # => #<TimeZone: Japan>
  *     Time.now                              # => 2009-03-18 05:08:06 PDT
- *     TimeZone.local = TimeZone["UTC"]      # => #<TimeZone: US/Pacific>
+ *     TimeZone.local TimeZone["UTC"]        # => #<TimeZone: US/Pacific>
  *     Time.now                              # => 2009-03-18 12:08:17 UTC
  */
 static VALUE

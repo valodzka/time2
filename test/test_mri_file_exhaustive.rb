@@ -43,12 +43,15 @@ class TestFileExhaustive < Test::Unit::TestCase
     file = @file
 
     assert_equal(file, File.new(file).path)
-    assert_equal(file, File.path(file))
-    o = Object.new
-    class << o; self; end.class_eval do
-      define_method(:to_path) { file }
+    ruby19 do
+      assert_equal(file, File.path(file))
+      o = Object.new
+      class << o; self; end.class_eval do
+        define_method(:to_path) { file }
+      end
+
+      assert_equal(file, File.path(o))
     end
-    assert_equal(file, File.path(o))
   end
 
   def assert_integer(n)
@@ -159,13 +162,15 @@ class TestFileExhaustive < Test::Unit::TestCase
 
   def test_world_readable_p
     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
-    File.chmod(0006, @file)
-    assert(File.world_readable?(@file))
-    File.chmod(0060, @file)
-    assert(!(File.world_readable?(@file)))
-    File.chmod(0600, @file)
-    assert(!(File.world_readable?(@file)))
-    assert(!(File.world_readable?(@nofile)))
+    ruby19 do
+      File.chmod(0006, @file)
+      assert(File.world_readable?(@file))
+      File.chmod(0060, @file)
+      assert(!(File.world_readable?(@file)))
+      File.chmod(0600, @file)
+      assert(!(File.world_readable?(@file)))
+      assert(!(File.world_readable?(@nofile)))
+    end
   end
 
   def test_writable_p
@@ -188,13 +193,15 @@ class TestFileExhaustive < Test::Unit::TestCase
 
   def test_world_writable_p
     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
-    File.chmod(0006, @file)
-    assert(File.world_writable?(@file))
-    File.chmod(0060, @file)
-    assert(!(File.world_writable?(@file)))
-    File.chmod(0600, @file)
-    assert(!(File.world_writable?(@file)))
-    assert(!(File.world_writable?(@nofile)))
+    ruby19 do
+      File.chmod(0006, @file)
+      assert(File.world_writable?(@file))
+      File.chmod(0060, @file)
+      assert(!(File.world_writable?(@file)))
+      File.chmod(0600, @file)
+      assert(!(File.world_writable?(@file)))
+      assert(!(File.world_writable?(@nofile)))
+    end
   end
 
   def test_executable_p
@@ -443,9 +450,11 @@ class TestFileExhaustive < Test::Unit::TestCase
     s = "foo" + File::SEPARATOR + "bar" + File::SEPARATOR + "baz"
     assert_equal(s, File.join("foo", "bar", "baz"))
     assert_equal(s, File.join(["foo", "bar", "baz"]))
-    o = Object.new
-    def o.to_path; "foo"; end
-    assert_equal(s, File.join(o, "bar", "baz"))
+    ruby19 do
+      o = Object.new
+      def o.to_path; "foo"; end
+      assert_equal(s, File.join(o, "bar", "baz"))
+    end
     assert_equal(s, File.join("foo" + File::SEPARATOR, "bar", File::SEPARATOR + "baz"))
   end
 
@@ -507,7 +516,9 @@ class TestFileExhaustive < Test::Unit::TestCase
       assert_equal(File.socket?(f), test(?S, f))
       assert_equal(File.setuid?(f), test(?u, f))
       assert_equal(File.writable?(f), test(?w, f))
-      assert_equal(File.world_writable?(f), test(?W, f))
+      ruby19 do
+        assert_equal(File.world_writable?(f), test(?W, f))
+      end
       assert_equal(File.executable?(f), test(?x, f))
       assert_equal(File.executable_real?(f), test(?X, f))
       assert_equal(File.zero?(f), test(?z, f))
@@ -527,7 +538,9 @@ class TestFileExhaustive < Test::Unit::TestCase
     assert_raise(ArgumentError) { test }
     assert_raise(Errno::ENOENT) { test(?A, @nofile) }
     assert_raise(ArgumentError) { test(?a) }
-    assert_raise(ArgumentError) { test("\0".ord) }
+    ruby19 do
+      assert_raise(ArgumentError) { test("\0".ord) }
+    end
   end
 
   def test_stat_init
@@ -626,12 +639,14 @@ class TestFileExhaustive < Test::Unit::TestCase
 
   def test_stat_world_readable_p
     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
-    File.chmod(0006, @file)
-    assert(File::Stat.new(@file).world_readable?)
-    File.chmod(0060, @file)
-    assert(!(File::Stat.new(@file).world_readable?))
-    File.chmod(0600, @file)
-    assert(!(File::Stat.new(@file).world_readable?))
+    ruby19 do
+      File.chmod(0006, @file)
+      assert(File::Stat.new(@file).world_readable?)
+      File.chmod(0060, @file)
+      assert(!(File::Stat.new(@file).world_readable?))
+      File.chmod(0600, @file)
+      assert(!(File::Stat.new(@file).world_readable?))
+    end
   end
 
   def test_stat_writable_p
@@ -652,12 +667,14 @@ class TestFileExhaustive < Test::Unit::TestCase
 
   def test_stat_world_writable_p
     return if /cygwin|mswin|bccwin|mingw|emx/ =~ RUBY_PLATFORM
-    File.chmod(0006, @file)
-    assert(File::Stat.new(@file).world_writable?)
-    File.chmod(0060, @file)
-    assert(!(File::Stat.new(@file).world_writable?))
-    File.chmod(0600, @file)
-    assert(!(File::Stat.new(@file).world_writable?))
+    ruby19 do
+      File.chmod(0006, @file)
+      assert(File::Stat.new(@file).world_writable?)
+      File.chmod(0060, @file)
+      assert(!(File::Stat.new(@file).world_writable?))
+      File.chmod(0600, @file)
+      assert(!(File::Stat.new(@file).world_writable?))
+    end
   end
 
   def test_stat_executable_p

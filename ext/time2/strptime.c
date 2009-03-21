@@ -97,7 +97,12 @@ static const struct pg_time_locale {
 
 
 #define asizeof(a)	(sizeof (a) / sizeof ((a)[0]))
-#define strncasecmp(s1, s2, n) (st_strncasecmp(s1, s2, n))
+#ifndef RUBY_TIME_18_COMPAT
+#  define strncasecmp(s1, s2, n) (st_strncasecmp(s1, s2, n))
+#else
+#  define strncasecmp(s1, s2, n) (strncmp(s1, s2, n))
+#endif
+
 
 static const char *
 _pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, long *nsec, struct pg_tz const *tz)
@@ -301,7 +306,7 @@ label:
 			break;
 
 		case 'p':
-			if (strncasecmp(buf, "am", (len=2)) == 0 || strncasecmp(buf, "a.m.", (len=4)) == 0) {
+			if (strncasecmp(buf, "AM", (len=2)) == 0 || strncasecmp(buf, "A.M.", (len=4)) == 0) {
 			  has_am_pm = 1;
 			  if (tm->tm_hour > 12)
 				return 0;
@@ -309,7 +314,7 @@ label:
 			  break;
 			}
 
-			if (strncasecmp(buf, "pm", (len=2)) == 0 || strncasecmp(buf, "p.m.", (len=4)) == 0) {
+			if (strncasecmp(buf, "PM", (len=2)) == 0 || strncasecmp(buf, "P.M.", (len=4)) == 0) {
 			  has_am_pm = 2;
 			  if (tm->tm_hour > 12)
 				return 0;
