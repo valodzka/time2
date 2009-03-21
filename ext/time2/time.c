@@ -48,6 +48,7 @@
 
 VALUE rb_cTime;
 VALUE rb_cTimeZone;
+VALUE rb_sTimeZonePeriod;
 
 static VALUE time_utc_offset _((VALUE));
 static struct pg_tz* timezone_default(struct pg_tz *dflt);
@@ -2282,6 +2283,34 @@ time_strftime(VALUE time, VALUE format)
     return str;
 }
 
+static VALUE
+time_period(VALUE time)
+{
+    struct time_object *tobj;
+	struct ttinfo *ttinfo;
+	struct state *state;
+
+	//if (tobj->tm_got == 0) {
+	last_ttinfo_index = -1;
+	GetTimeval(time, tobj);
+	tobj->tm_got = 0; /* force update */
+	time_get_tm(time, IS_GMT(tobj));
+
+	if (last_ttinfo_index == -1)
+		rb_raise(rb_eRuntimeError, "Time#period error");
+	state = &tobj->tz->state;
+	ttinfo = &state->ttis[last_ttinfo_index];
+
+	return rb_struct_new(rb_sTimeZonePeriod,
+						 LONG2FIX(ttinfo->tt_gmtoff),
+						 Qnil,
+						 Qnil,
+						 rb_str_new_cstr(&state->chars[ttinfo->tt_abbrind]),
+						 ttinfo->tt_isdst ? Qtrue : Qfalse,
+						 ttinfo->tt_ttisgmt ? Qtrue : Qfalse,
+						 NULL);
+}
+
 static void
 time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
 {
@@ -2783,7 +2812,6 @@ timezone_inspect(VALUE timezone)
 
     return str;
 }
-
 /*
  *  <code>Time</code> is an abstraction of dates and times. Time is
  *  stored internally as the number of seconds and nanoseconds since
@@ -2801,8 +2829,6 @@ timezone_inspect(VALUE timezone)
  *  this fact when comparing times with each other---times that are
  *  apparently equal when displayed may be different when compared.
  */
-const char * rb_tzdir = NULL;
-
 void
 Init_time2(void)
 {
@@ -2879,6 +2905,7 @@ Init_time2(void)
     rb_define_method(rb_cTime, "isdst", time_isdst, 0);
     rb_define_method(rb_cTime, "dst?", time_isdst, 0);
     rb_define_method(rb_cTime, "zone", time_zone, 0);
+	rb_define_method(rb_cTime, "period", time_period, 0);
     rb_define_method(rb_cTime, "gmtoff", time_utc_offset, 0);
     rb_define_method(rb_cTime, "gmt_offset", time_utc_offset, 0);
     rb_define_method(rb_cTime, "utc_offset", time_utc_offset, 0);
@@ -2917,6 +2944,15 @@ Init_time2(void)
     rb_define_method(rb_cTimeZone, "to_s", timezone_name, 0);
     rb_define_alias(rb_cTimeZone,  "name", "to_s");
     rb_define_method(rb_cTimeZone, "inspect", timezone_inspect, 0);
+
+	rb_sTimeZonePeriod = rb_struct_define("TimeZonePeriod",
+										  "offset",
+										  "start",
+										  "finish",
+										  "abbr",
+										  "dst",
+										  "gmt",
+										  NULL);
 
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */

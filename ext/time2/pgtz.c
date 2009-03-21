@@ -81,6 +81,8 @@ void           rb_w32_closedir(DIR *);
 #include "pgtz.h"
 #include "tzfile.h"
 
+const char * rb_tzdir = NULL;
+
 static bool scan_directory_ci(const char *dirname,
 				  const char *fname, int fnamelen,
 				  char *canonname, int canonnamelen);

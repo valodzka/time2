@@ -70,6 +70,7 @@ extern int	tzparse(const char *name, struct state * sp, int lastditch);
 #define RB_ERRNO_RAISE(msg, det) rb_raise(rb_eRuntimeError, msg ": %d", det, errno)
 
 extern const char * rb_tzdir;
+extern int last_ttinfo_index;
 
 /* Julian-date equivalents of Day 0 in Unix and Postgres reckoning */
 #define UNIX_EPOCH_JDATE		2440588 /* == date2j(1970, 1, 1) */

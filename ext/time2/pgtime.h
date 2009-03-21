@@ -37,8 +37,8 @@ struct pg_tm
 typedef struct pg_tz pg_tz;
 typedef struct pg_tzenum pg_tzenum;
 
-extern struct pg_tm *pg_localtime_r(const pg_time_t *timep, 
-                                    const pg_tz *tz, 
+extern struct pg_tm *pg_localtime_r(const pg_time_t *timep,
+                                    const pg_tz *tz,
                                     struct pg_tm *tm);
 extern struct pg_tm *pg_gmtime_r(const pg_time_t *timep, struct pg_tm *tm);
 extern char * pg_asctime_r(const struct pg_tm *tm,  char * buf);
@@ -55,9 +55,9 @@ extern size_t pg_strftime(char *s, size_t max, const char *format,
 			const struct pg_tm * tm);
 
 extern const char *
-pg_strptime(const char * buf, 
-			const char * fmt,  
-			struct pg_tm * tm, 
+pg_strptime(const char * buf,
+			const char * fmt,
+			struct pg_tm * tm,
 			long *nsec,
 			struct pg_tz const *tz);
 

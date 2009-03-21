@@ -17,7 +17,7 @@ Short <code>irb</code> session:
 
 <pre>
 
-$ruby -rtimetz -S irb
+$ruby -rtime2 -S irb
 # Local timezone settings
 >> TimeZone.local
 => #<TimeZone: Europe/Athens>

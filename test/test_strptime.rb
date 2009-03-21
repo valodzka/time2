@@ -15,12 +15,7 @@ class TestDateStrptime < Test::Unit::TestCase
   def test_fill_gap_if_low_given
     ts = Time.now
     t = Time.strptime "1", "%N"
-    assert_equal ts.year,  t.year
-    assert_equal ts.mon, t.mon
-    assert_equal ts.day, t.day
-    assert_equal ts.hour, t.hour
-    assert_equal ts.min, t.min
-    assert_in_delta ts.sec, 3, t.sec
+    assert ts.to_i - t.to_i < 2
     assert_equal 1, t.nsec
   end
 

@@ -54,6 +54,7 @@
 #  define  TOLOWER(c) tolower((unsigned char)(c))
 #  define  TOUPPER(c) toupper((unsigned char)(c))
 #endif
+#include "pgtz.h"
 
 #ifndef GAWK
 #include <stdio.h>
@@ -184,7 +185,7 @@ max(int a, int b)
 /* strftime --- produce formatted time */
 
 size_t
-rb_strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr, const struct timespec *ts, int gmt)
+rb_strftime(char *s, size_t maxsize, const char *format, const struct pg_tm *timeptr, const struct timespec *ts, int gmt)
 {
 	char *endp = s + maxsize;
 	char *start = s;
@@ -552,27 +553,8 @@ rb_strftime(char *s, size_t maxsize, const char *format, const struct tm *timept
 				tp = "UTC";
 				break;
 			}
-#ifdef HAVE_TZNAME
-			i = (daylight && timeptr->tm_isdst > 0); /* 0 or 1 */
-			tp = tzname[i];
-#else
-#ifdef HAVE_TM_ZONE
+
 			tp = timeptr->tm_zone;
-#else
-#ifdef HAVE_TM_NAME
-			tp = timeptr->tm_name;
-#else
-#ifdef HAVE_TIMEZONE
-			gettimeofday(& tv, & zone);
-#ifdef TIMEZONE_VOID
-			tp = timezone();
-#else
-			tp = timezone(zone.tz_minuteswest, timeptr->tm_isdst > 0);
-#endif /* TIMEZONE_VOID */
-#endif /* HAVE_TIMEZONE */
-#endif /* HAVE_TM_NAME */
-#endif /* HAVE_TM_ZONE */
-#endif /* HAVE_TZNAME */
 			i = strlen(tp);
 			break;
 

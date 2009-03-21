@@ -81,9 +81,9 @@ static const char *getsecs(const char *strp, long *secsp);
 static const char *getoffset(const char *strp, long *offsetp);
 static const char *getrule(const char *strp, struct rule * rulep);
 static void gmtload(struct state * sp);
-static struct pg_tm *gmtsub(const pg_time_t *timep, long offset, 
+static struct pg_tm *gmtsub(const pg_time_t *timep, long offset,
 							struct pg_tm *tmp);
-static struct pg_tm *localsub(const pg_time_t *timep, long offset, 
+static struct pg_tm *localsub(const pg_time_t *timep, long offset,
 							   struct pg_tm *tmp, const pg_tz *tz);
 static int increment_overflow(int *number, int delta);
 static pg_time_t transtime(pg_time_t janfirst, int year,
@@ -98,7 +98,8 @@ static struct state gmtmem;
 #define gmtptr		(&gmtmem)
 
 
-static int	gmt_is_set = 0;
+static int gmt_is_set = 0;
+int last_ttinfo_index = 0;
 
 
 static long
@@ -279,7 +280,7 @@ tzload(const char *name, char *canonname, struct state * sp, int doextend)
 					 * Ignore the beginning (harder).
 					 */
 					int j;
-					
+
 					for (j = 0; j + i < sp->timecnt; ++j)
 					{
 						sp->ats[j] = sp->ats[j + i];
@@ -309,7 +310,7 @@ tzload(const char *name, char *canonname, struct state * sp, int doextend)
 	{
 		struct state    ts;
 		int    result;
- 
+
 		u.buf[nread - 1] = '\0';
 		result = tzparse(&u.buf[1], &ts, FALSE);
 		if (result == 0 && ts.typecnt == 2 &&
@@ -997,7 +998,7 @@ localsub(const pg_time_t *timep, long offset,
 		pg_time_t	seconds;
 		pg_time_t	tcycles;
 		pg_time_t	icycles;
- 
+
 		if (t < sp->ats[0])
 			seconds = sp->ats[0] - t;
 		else    seconds = t - sp->ats[sp->timecnt - 1];
@@ -1045,11 +1046,11 @@ localsub(const pg_time_t *timep, long offset,
 	{
 		int    lo = 1;
 		int    hi = sp->timecnt;
- 
+
 		while (lo < hi)
 		{
 			int    mid = (lo + hi) >> 1;
- 
+
 			if (t < sp->ats[mid])
 				hi = mid;
 			else    lo = mid + 1;
@@ -1057,6 +1058,7 @@ localsub(const pg_time_t *timep, long offset,
 		i = (int) sp->types[lo - 1];
 	}
 	ttisp = &sp->ttis[i];
+	last_ttinfo_index = i; /* TODO: thread safety */
 
 	result = timesub(&t, ttisp->tt_gmtoff, sp, tmp);
 	tmp->tm_isdst = ttisp->tt_isdst;
@@ -1168,7 +1170,7 @@ timesub(const pg_time_t *timep, long offset,
 		pg_time_t	tdelta;
 		int		idelta;
 		int		leapdays;
- 
+
 		tdelta = tdays / DAYSPERLYEAR;
 		idelta = tdelta;
 		if (tdelta - idelta >= 1 || idelta - tdelta >= 1)
@@ -1186,7 +1188,7 @@ timesub(const pg_time_t *timep, long offset,
 	}
 	{
 		long   seconds;
- 
+
 		seconds = tdays * SECSPERDAY + 0.5;
 		tdays = seconds / SECSPERDAY;
 		rem += seconds - tdays * SECSPERDAY;
@@ -1325,7 +1327,7 @@ pg_next_dst_boundary(const pg_time_t *timep,
 		pg_time_t	tcycles;
 		pg_time_t       icycles;
 		int		result;
-		
+
 		if (t < sp->ats[0])
 			seconds = sp->ats[0] - t;
 		else    seconds = t - sp->ats[sp->timecnt - 1];
@@ -1392,11 +1394,11 @@ pg_next_dst_boundary(const pg_time_t *timep,
 	{
 		int    lo = 1;
 		int    hi = sp->timecnt;
- 
+
 		while (lo < hi)
 		{
 			int    mid = (lo + hi) >> 1;
- 
+
 			if (t < sp->ats[mid])
 				hi = mid;
 			else    lo = mid + 1;
