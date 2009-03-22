@@ -2398,7 +2398,7 @@ time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
  * - string with encoding
  */
 static VALUE
-time_strptime(VALUE klass, VALUE str, VALUE format) 
+time_strptime(VALUE klass, VALUE str, VALUE format)
 {
     struct pg_tm tm;
     struct pg_tz *tz;
@@ -2406,6 +2406,13 @@ time_strptime(VALUE klass, VALUE str, VALUE format)
     int utc_p;
     long nsec = 0;
     const char *p;
+
+	StringValue(str);
+	StringValue(format);
+
+	if (!rb_enc_str_asciicompat_p(format) || !rb_enc_str_asciicompat_p(str)) {
+		rb_raise(rb_eArgError, "arguments should have ASCII compatible encoding");
+    }
 
     tm.tm_year = INT_MIN;
     tm.tm_mon = INT_MIN;

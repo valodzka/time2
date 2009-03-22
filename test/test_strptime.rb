@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 require File.join(File.dirname(__FILE__), 'helper')
 
 class TestDateStrptime < Test::Unit::TestCase
@@ -25,5 +26,20 @@ class TestDateStrptime < Test::Unit::TestCase
     assert_equal ts.year, t.year
     assert_equal 1, t.mon
     assert_equal 10, t.day
+  end
+
+  def test_utf_8
+    t = Time.strptime "День:3, Месяц:3, Год:2008", "День:%d, Месяц:%m, Год:%Y"
+    assert_equal 2008, t.year
+    assert_equal 3, t.mon
+    assert_equal 3, t.day
+  end
+
+  def test_utf_16
+    ruby19 do
+      assert_raise ArgumentError do
+        Time.strptime "День:3, Месяц:3, Год:2008", "День:%d, Месяц:%m, Год:%Y".encode("UTF-16be")
+      end
+    end
   end
 end
