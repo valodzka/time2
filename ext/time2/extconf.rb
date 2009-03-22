@@ -31,6 +31,8 @@ end
 $defs << "-DOLD_TIME_COMPAT"
 # check if OS use leap seconds
 check_leap_seconds()
+# Check for new hash API (MurmurHash)
+have_func('rb_hash_start', 'ruby.h')
 # Different versions compatibility
 case RUBY_VERSION
 when /^1.9/

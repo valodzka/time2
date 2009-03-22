@@ -1271,8 +1271,7 @@ time_utc_p(VALUE time)
 static VALUE
 time_hash(VALUE time)
 {
-	/* COMPAT
-	TODO: find way to check if new api avaliable
+#ifdef HAVE_RB_HASH_START
     struct time_object *tobj;
     long hash = 0;
 
@@ -1285,13 +1284,14 @@ time_hash(VALUE time)
 #endif
     hash = rb_hash_end(rb_hash_uint(hash, tobj->ts.tv_nsec));
     return LONG2FIX(hash);
-	*/
+#else
 	struct time_object *tobj;
 	long hash;
 
 	GetTimeval(time, tobj);
 	hash = tobj->ts.tv_sec ^ tobj->ts.tv_nsec;
 	return LONG2FIX(hash);
+#endif
 }
 
 /* :nodoc: */
