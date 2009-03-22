@@ -2365,7 +2365,7 @@ time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
  * - %H - Hour of the day, 24-hour clock (00..23)
  * - %I - Hour of the day, 12-hour clock (01..12)
  * - %j - Day of the year (001..366)
- * - <s>%L - Millisecond of the second (000..999)</s>
+ * - %L - Millisecond of the second (000..999)
  * - %m - Month of the year (01..12)
  * - %M - Minute of the hour (00..59)
  * - %N - Fractional seconds digits, default is 9 digits (nanosecond)
@@ -2395,7 +2395,6 @@ time_fill_gaps_tm(struct pg_tm *tm, struct pg_tz const * tz)
  * - document principe of gaps filling and replacement
  * - %N behaves different from old strptime
  * - '\0' in string will cause error
- * - string with encoding
  */
 static VALUE
 time_strptime(VALUE klass, VALUE str, VALUE format)

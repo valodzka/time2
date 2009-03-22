@@ -497,6 +497,7 @@ label:
 			}
 			break;
 		case 'N':
+		case 'L':
 		    {
 			char *cp;
 			int sverrno;
@@ -507,6 +508,11 @@ label:
 			if (errno != 0) {
 				errno = sverrno;
 				return 0;
+			}
+			if (c == 'L') {
+				if (*nsec < 0 || *nsec > 999)
+					return 0;
+				*nsec *= 1000000;
 			}
 			buf = cp;
 		    }

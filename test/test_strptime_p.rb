@@ -7,4 +7,14 @@ class TestTimeStrptimeAMPM < Test::Unit::TestCase
     t = Time.strptime("PM 2", "%p %I")
     assert_equal(14, t.hour)
   end
+
+  def test_L_flag
+    t = Time.strptime('1', '%L')
+    assert_equal 1_000_000, t.nsec
+    t = Time.strptime('999', '%L')
+    assert_equal 999_000_000, t.nsec
+    assert_raise ArgumentError do
+      t = Time.strptime('9995', '%L')
+    end
+  end
 end
