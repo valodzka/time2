@@ -311,7 +311,7 @@ class TestDateStrptime < Test::Unit::TestCase
     n = 10**9
     with_tz("Japan") do  # not have dst :)
       d = Time.local(2006,6,1)
-      366.times.each do |t|
+      366.times do |t|
         d += 3600 * 24
 
         [
