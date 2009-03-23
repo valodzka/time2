@@ -15,8 +15,8 @@
  */
 
 #include <limits.h>				/* for CHAR_BIT et al. */
+#include <sys/stat.h>
 //#include <sys/wait.h>			/* for WIFEXITED and WEXITSTATUS */
-//#include <unistd.h>				/* for F_OK and R_OK */
 
 #include "pgtime.h"
 
@@ -53,6 +53,28 @@ extern void *irealloc(void *pointer, int size);
 extern void icfree(char *pointer);
 extern void ifree(char *pointer);
 extern const char *scheck(const char *string, const char *format);
+
+
+#if HAVE_STDINT_H
+#  include "stdint.h"
+#endif /* !HAVE_STDINT_H */
+
+/* Pre-C99 GCC compilers define __LONG_LONG_MAX__ instead of LLONG_MAX.  */
+#if defined LLONG_MAX || defined __LONG_LONG_MAX__
+typedef long long pg_int64_t;
+#else /* ! (defined LLONG_MAX || defined __LONG_LONG_MAX__) */
+#  if (LONG_MAX >> 31) < 0xffffffff
+#    error Please use a compiler that supports a 64-bit integer type (or wider); you may need to compile with "-DHAVE_STDINT_H".
+#  endif /* (LONG_MAX >> 31) < 0xffffffff */
+typedef long pg_int64_t;
+#endif /* ! (defined LLONG_MAX || defined __LONG_LONG_MAX__) */
+
+#ifndef INT32_MAX
+#define INT32_MAX 0x7fffffff
+#endif /* !defined INT32_MAX */
+#ifndef INT32_MIN
+#define INT32_MIN (-1 - INT32_MAX)
+#endif /* !defined INT32_MIN */
 
 
 /*

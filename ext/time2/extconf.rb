@@ -42,5 +42,10 @@ when /^1.8/
 else
   raise 'You use unsupported ruby version'
 end
-
+# Disable use zic.c and others
+$objs = %w{asctime.o  localtime.o  pgtz.o strftime.o  strptime.o  time.o}
 create_makefile("time2")
+
+# $objs = %w{localtime.o  zic.o scheck.o}
+#create_makefile("zic")
+
