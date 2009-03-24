@@ -37,7 +37,7 @@
 #endif
 
 #ifndef TIMET2NUM /* compatitbility with 1.9 */
-#  define TIME2NUM(x) LONG2NUM(x)
+#  define TIMET2NUM(x) LONG2NUM(x)
 #endif
 #ifndef NUM2TIMET
 #  define NUM2TIMET(x) NUM2LONG(x)

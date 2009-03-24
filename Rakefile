@@ -3,9 +3,11 @@ require 'rake/clean'
 require 'rake/rdoctask'
 require 'rake/testtask'
 
-BIN = "*.{bundle,so,o,obj,pdb,lib,def,exp}"
-CLEAN.include ["ext/time2/#{BIN}", "lib/**/#{BIN}", 'ext/time2/Makefile', 'ext/time2/ZMakefile',
+TBIN = "*.{bundle,o,obj,pdb,lib,def,exp}"
+CLEAN.include ["ext/time2/#{TBIN}", "lib/**/#{TBIN}", 'ext/time2/Makefile', 'ext/time2/ZMakefile',
                'ext/time2/tz_countries.h', '**/.*.sw?', '*.gem', '.config', 'pkg', 'html']
+BIN = "*.{so}"
+CLOBBER.include ["ext/time2/#{TBIN}", "lib/**/#{TBIN}", 'zoneinfo']
 
 Rake::TestTask.new do |t|
   t.test_files = FileList['test/runner.rb']
@@ -39,9 +41,16 @@ task :bench do
 end
 
 desc "build tz database"
-task :zic do
+task :zoneinfo => :zic do
   require 'lib/zic'
-  
+  dir = 'tzdata'
+  places = %w{africa asia europe northamerica antarctica
+    australasia etcetera pacificnew southamerica
+    backward solar87 solar88 solar89 systemv}.map{|file| File.join(dir, file) }
+  # timezones without leap seconds
+  ruby("-Ilib -rzic -e'zic %w{-dzoneinfo -pUTC #{places.join(' ')}}'")
+  # timezones with leap seconds
+  ruby("-Ilib -rzic -e'zic %w{-dzoneinfo/right -Ltzdata/leapseconds #{places.join(' ')}}'")
 end
 
 time2_dir = "ext/time2/"
@@ -91,10 +100,10 @@ makes.each do |makefile|
   end
 end
 
-file "#{time2_dir}tz_countries.h" => "zoneinfo/zone.tab" do
+file "#{time2_dir}tz_countries.h" => "tzdata/zone.tab" do
   countries = {}
 
-  IO.foreach("zoneinfo/zone.tab") do |line|
+  IO.foreach("tzdata/zone.tab") do |line|
     line.strip!
     next if line =~ /^#/ || line.empty?
     # example:
