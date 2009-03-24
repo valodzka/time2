@@ -7,9 +7,36 @@ Ruby Time class is the one of the most disappointment parts of the ruby standard
 * It has pure ruby implementation of time parsing method, which is "awfully slow":http://scie.nti.st/2007/11/28/ruby-vs-python-date-parsing-am-i-doing-somethin-wrong.
 * It has a couple of "non-portable features":http://www.ruby-doc.org/core/classes/Time.src/M000250.html, because heavy depend from underlying system libraries. On Windows, for example, you can't create time before UNIX epoch (i.e. 1970).
 
-Project tries to radically solve this problems. It adds platform independent (and therefore portable) time functions, inсluding full time zone support (full tz database, transition between time zones, dst, leap seconds) and fast implementation of the <code>strptime</code> method. Functions which return current system time it is the only functions from which the library depends.
+Project tries to radically solve this problems. It adds platform independent (and therefore portable) time functions, inсluding full time zone support (full "tz database":http://www.twinsun.com/tz/tz-link.htm, transition between time zones, dst, leap seconds) and fast implementation of the <code>strptime</code> method. Functions which return current system time it is the only functions from which the library depends.
 
 Library will be distributed as a gem when become production ready, but I hope this code will be included in ruby core.
+
+h4. FAQ
+
+h5. Why not to extend Time to hold arbitrary time offset from UTC? It's simpler and easier to maintain!
+
+If we take two different places with same UTC offset, this doesn't mean that they will have same offset in other day, for example:
+
+|_.America/New_York |_. America/Manaus |
+|<pre>
+>> t = Time.local(2009, 11, 1, 1, 30, 0)
+=> 2009-11-01 01:30:00 -0400
+>> t + 3600*24*30
+=> 2009-12-01 00:30:00 -0500 
+</pre>|<pre>
+t = Time.local(2009, 11, 1, 1, 30, 0)
+=> 2009-11-01 01:30:00 -0400
+>> t + 3600*24*30
+=> 2009-12-01 01:30:00 -0400
+</pre>|
+
+We should now exact place, not just offset, to perform correct calculation. Also many other methods, like a <code>Time#zone<code> or <code>Time#strftime</code> with %Z flag, won't work correctly without exact timezone information. 
+
+h5. Why library doesn't use system "tz database":http://www.twinsun.com/tz/tz-link.htm ?
+
+At the moment library uses global variable <code>$__tz_directory</code> as a tz database location directory. It's configured automaticaly to use bundled tz database in time of library loading. 
+
+Many OS (but "not all":http://microsoft.com) contain own tz database, so if you want to use system (or any other) tz database, you should set <code>$__tz_directory</code> before <code>require 'time2'</code> statement.
 
 h3. Example
 
@@ -123,10 +150,8 @@ h3. Open questions
 
 h3. TODO
 
-* <code>strptime</code> implementation doesn't support some special flags
-* <code>stftime</code> on some platforms doesn't display %Z correctly
+* <code>strptime</code> implementation doesn't support some special flags (%W, %u)
 * code isn't clean enough, many old code should be removed
-* tests, tests, tests
 * ugly english :)
 
 h3. Acknowledgements
