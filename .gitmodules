@@ -1,0 +1,3 @@
+[submodule "tzdata"]
+	path = tzdata
+	url = git://github.com/valodzka/tzdata.git
