@@ -46,6 +46,14 @@ end
 $objs = %w{asctime.o  localtime.o  pgtz.o strftime.o  strptime.o  time.o}
 create_makefile("time2")
 
-# $objs = %w{localtime.o  zic.o scheck.o ruby_zic.o ialloc.o getopt.o}
-# create_makefile("zic")
+# Crasiest monkey pathing to generate two makefiles with different names
+alias :system_open :open
+
+def open(name, fmt=nil)
+  name = "ZMakefile" if name == "Makefile"
+  system_open(name, fmt)
+end
+
+$objs = %w{localtime.o  zic.o scheck.o ruby_zic.o ialloc.o getopt.o}
+create_makefile("zic")
 

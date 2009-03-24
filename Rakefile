@@ -4,7 +4,7 @@ require 'rake/rdoctask'
 require 'rake/testtask'
 
 BIN = "*.{bundle,so,o,obj,pdb,lib,def,exp}"
-CLEAN.include ["ext/time2/#{BIN}", "lib/**/#{BIN}", 'ext/time2/Makefile',
+CLEAN.include ["ext/time2/#{BIN}", "lib/**/#{BIN}", 'ext/time2/Makefile', 'ext/time2/ZMakefile',
                'ext/time2/tz_countries.h', '**/.*.sw?', '*.gem', '.config', 'pkg', 'html']
 
 Rake::TestTask.new do |t|
@@ -40,6 +40,7 @@ end
 
 time2_dir = "ext/time2/"
 time2_so = "#{time2_dir}time2.#{Config::CONFIG['DLEXT']}"
+zic_so = "#{time2_dir}zic.#{Config::CONFIG['DLEXT']}"
 time2_files = FileList[
   "#{time2_dir}*.c",
   "#{time2_dir}*.h",
@@ -48,7 +49,26 @@ time2_files = FileList[
   "#{time2_dir}tz_countries.h",
   "lib"
 ]
+zic_files = FileList[
+  "#{time2_dir}*.c",
+  "#{time2_dir}*.h",
+  "#{time2_dir}extconf.rb",
+  "#{time2_dir}ZMakefile",
+  "lib"
+]
+makes = FileList[
+   "#{time2_dir}Makefile",
+   "#{time2_dir}ZMakefile"]
+
+task :zic => ["#{time2_dir}ZMakefile", zic_so]
 task :time2 => ["#{time2_dir}Makefile", time2_so]
+
+file zic_so => zic_files do
+  Dir.chdir(time2_dir) do
+    sh((RUBY_PLATFORM =~ /mswin/ ? "nmake /f" : 'make -f')+'ZMakefile')
+  end
+  cp zic_so, "lib"
+end
 
 file time2_so => time2_files do
   Dir.chdir(time2_dir) do
@@ -57,9 +77,11 @@ file time2_so => time2_files do
   cp time2_so, "lib"
 end
 
-file "#{time2_dir}Makefile" => "#{time2_dir}extconf.rb" do
-  Dir.chdir(time2_dir) do
-    sh "#{Config::CONFIG['prefix']}/bin/#{Config::CONFIG['ruby_install_name']} extconf.rb"
+makes.each do |makefile|
+  file makefile => "#{time2_dir}extconf.rb" do
+    Dir.chdir(time2_dir) do
+      sh "#{Config::CONFIG['prefix']}/bin/#{Config::CONFIG['ruby_install_name']} extconf.rb"
+    end
   end
 end
 

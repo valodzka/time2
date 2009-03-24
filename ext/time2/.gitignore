@@ -7,5 +7,6 @@
 *.pdb
 *.def
 Makefile
+ZMakefile
 mkmf.log
 tz_countries.h
