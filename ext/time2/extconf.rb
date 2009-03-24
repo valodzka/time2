@@ -1,4 +1,5 @@
 require 'mkmf'
+require 'fileutils'
 
 def try_code(code, expr, headers=nil, opt=nil,&b)
   includes = cpp_include(headers)
@@ -42,18 +43,15 @@ when /^1.8/
 else
   raise 'You use unsupported ruby version'
 end
-# Disable use zic.c and others
+
+# zic.so defines one global zic which allow build timezone database from ruby
+$objs = %w{localtime.o  zic.o scheck.o ruby_zic.o ialloc.o getopt.o}
+create_makefile("zic")
+
+FileUtils.mv('Makefile', 'ZMakefile')
+
+# Time2 - main extension
 $objs = %w{asctime.o  localtime.o  pgtz.o strftime.o  strptime.o  time.o}
 create_makefile("time2")
 
-# Crasiest monkey pathing to generate two makefiles with different names
-alias :system_open :open
-
-def open(name, fmt=nil)
-  name = "ZMakefile" if name == "Makefile"
-  system_open(name, fmt)
-end
-
-$objs = %w{localtime.o  zic.o scheck.o ruby_zic.o ialloc.o getopt.o}
-create_makefile("zic")
 
