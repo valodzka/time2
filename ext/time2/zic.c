@@ -7,13 +7,22 @@
  */
 
 
-
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
 #include <limits.h>
 #include <locale.h>
-#include <unistd.h>				/* for F_OK and R_OK */
+#ifdef HAVE_UNISTD
+#  include <unistd.h>				/* for F_OK and R_OK */
+#endif
+
+#if defined(_WIN32) && !defined(WIN32)
+#  define WIN32
+#endif
+
+#if !defined(F_OK) && defined(_WIN32)
+#  define F_OK 0
+#endif
 
 extern int	optind;
 extern char *optarg;
@@ -36,11 +45,14 @@ typedef pg_int64_t  zic_t;
 #endif
 
 #ifndef WIN32
-#ifdef S_IRUSR
-#define MKDIR_UMASK (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
+#  define PG_MKDIR(a, b) mkdir((a),(b))
+#  ifdef S_IRUSR
+#    define MKDIR_UMASK (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
+#  else
+#    define MKDIR_UMASK 0755
+#  endif
 #else
-#define MKDIR_UMASK 0755
-#endif
+#  define PG_MKDIR(a, b) mkdir((a))
 #endif
 
 static char elsieid[] = "@(#)zic.c  8.17";
@@ -2790,7 +2802,7 @@ mkdirs(char *argname)
 			 * fail because of the directory being created by some other
 			 * multiprocessor, so we get to do extra checking.
 			 */
-			if (mkdir(name, MKDIR_UMASK) != 0)
+			if (PG_MKDIR(name, MKDIR_UMASK) != 0)
 			{
 				const char *e = strerror(errno);
 
@@ -2832,6 +2844,7 @@ eitol(int i)
 
 
 #ifdef WIN32
+#include <windows.h>
 /*
  * To run on win32
  */
@@ -2854,25 +2867,3 @@ pg_open_tzfile(const char *name, char *canonname)
 	return -1;
 }
 
-#include "ruby.h"
-
-static VALUE rb_zic(VALUE klass, VALUE args) {
-	VALUE* array =  RARRAY_PTR(args);
-	int len = RARRAY_LEN(args), i = 1;
-	char **argv;
-
-	argv = malloc(sizeof(char*)*(len+1));
-	argv[0] = "zic";
-
-	while (i < len + 1) {
-		argv[i] = StringValueCStr(array[i-1]);
-	}
-
-	return INT2FIX(zic_main(len + 1, argv));
-}
-
-// May be it is not best way to call zic, by it's defenitly shortest
-void Init_zic(void)
-{
-	rb_define_method(rb_cObject, "zic", rb_zic, 1);
-}
