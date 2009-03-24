@@ -30,7 +30,7 @@ t = Time.local(2009, 11, 1, 1, 30, 0)
 => 2009-12-01 01:30:00 -0400
 </pre>|
 
-We should now exact place, not just offset, to perform correct calculation. Also many other methods, like a <code>Time#zone<code> or <code>Time#strftime</code> with %Z flag, won't work correctly without exact timezone information. 
+We should now exact place, not just offset, to perform correct calculation. Also many other methods, like a <code>Time#zone</code> or <code>Time#strftime</code> with %Z flag, won't work correctly without exact timezone information. 
 
 h5. Why library doesn't use system "tz database":http://www.twinsun.com/tz/tz-link.htm ?
 
