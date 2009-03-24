@@ -32,6 +32,8 @@ end
 $defs << "-DOLD_TIME_COMPAT"
 # check if OS use leap seconds
 check_leap_seconds()
+# F_OK and etc.
+have_header('unistd.h')
 # Check for new hash API (MurmurHash)
 have_func('rb_hash_start', 'ruby.h')
 # Different versions compatibility

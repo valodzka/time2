@@ -56,4 +56,49 @@ module TZInfo
       @tz.to_s
     end
   end
+
+  class TimezonePeriod
+    def initialize(time, tz)
+      @time = time
+      @tz = tz
+    end
+
+    def utc_offset
+      utc_total_offset - std_offset
+    end
+
+    def std_offset
+      if @time.dst? then 60 else 0 end
+    end
+
+    def abbreviation
+      @time.zone.to_sym
+    end
+
+    def utc_total_offset
+      @time.gmtoff
+    end
+
+    alias :zone_identifier :abbreviation
+
+    def utc_start
+      nil
+    end
+
+    def utc_end
+      nil
+    end
+
+    def local_start
+      nil
+    end
+
+    def local_end
+      nil
+    end
+
+    def dst?
+      @time.dst?
+    end
+  end
 end

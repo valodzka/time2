@@ -12,7 +12,7 @@
 #endif
 #include <limits.h>
 #include <locale.h>
-#ifdef HAVE_UNISTD
+#ifdef HAVE_UNISTD_H
 #  include <unistd.h>				/* for F_OK and R_OK */
 #endif
 
@@ -704,7 +704,7 @@ static void
 setboundaries(void)
 {
 	int    i;
- 
+
 	min_time = -1;
 	for (i = 0; i < TIME_T_BITS_IN_FILE - 1; ++i)
 		min_time *= 2;

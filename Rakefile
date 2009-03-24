@@ -38,6 +38,12 @@ task :bench do
   ruby "test/benchmark/bench_strptime.rb"
 end
 
+desc "build tz database"
+task :zic do
+  require 'lib/zic'
+  
+end
+
 time2_dir = "ext/time2/"
 time2_so = "#{time2_dir}time2.#{Config::CONFIG['DLEXT']}"
 zic_so = "#{time2_dir}zic.#{Config::CONFIG['DLEXT']}"
