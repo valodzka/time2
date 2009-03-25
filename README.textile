@@ -32,7 +32,7 @@ t = Time.local(2009, 11, 1, 1, 30, 0)
 
 We should now exact place, not just offset, to perform correct calculation. Also many other methods, like a <code>Time#zone</code> or <code>Time#strftime</code> with %Z flag, won't work correctly without exact timezone information. 
 
-h5. Why library doesn't use system "tz database":http://www.twinsun.com/tz/tz-link.htm ?
+h5. How can I use system "tz database":http://www.twinsun.com/tz/tz-link.htm ?
 
 At the moment library uses global variable <code>$__tz_directory</code> as a tz database location directory. It's configured automaticaly to use bundled tz database in time of library loading. 
 

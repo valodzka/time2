@@ -42,13 +42,13 @@ end
 
 desc "build tz database"
 task :zoneinfo => :zic do
-  require 'lib/zic'
+  posixrules =	'America/New_York'
   dir = 'tzdata'
   places = %w{africa asia europe northamerica antarctica
     australasia etcetera pacificnew southamerica
     backward solar87 solar88 solar89 systemv}.map{|file| File.join(dir, file) }
   # timezones without leap seconds
-  ruby("-Ilib -rzic -e'zic %w{-dzoneinfo -pUTC #{places.join(' ')}}'")
+  ruby("-Ilib -rzic -e'zic %w{-dzoneinfo -p#{posixrules} #{places.join(' ')}}'")
   # timezones with leap seconds
   ruby("-Ilib -rzic -e'zic %w{-dzoneinfo/right -Ltzdata/leapseconds #{places.join(' ')}}'")
 end
