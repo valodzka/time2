@@ -2709,7 +2709,8 @@ timezone_get(VALUE klass, VALUE name)
  *     TimeZone.local(new_timezone) -> old local timezone
  *     TimeZone.local -> current local timezone
  *
- *  Sets timezone which will be used as a local
+ *  Sets timezone which will be used as a local either time zone name from database
+ *  or {string in posix format}[http://www.gnu.org/software/coreutils/manual/libc/TZ-Variable.html]
  *
  *     TimeZone.local                        # => #<TimeZone: Europe/Athens>
  *     TimeZone.local "Japan"                # => #<TimeZone: Europe/Athens>
@@ -2937,15 +2938,14 @@ Init_time2(void)
     rb_define_alias(rb_cTimeZone,  "name", "to_s");
     rb_define_method(rb_cTimeZone, "inspect", timezone_inspect, 0);
 
-	rb_sTimeZonePeriod = rb_struct_define("TimeZonePeriod",
-										  "offset",
-										  "start",
-										  "finish",
-										  "abbr",
-										  "dst",
-										  "gmt",
-										  NULL);
-
+    rb_sTimeZonePeriod = rb_struct_define("TimeZonePeriod",
+					  "offset",
+					  "start",
+					  "finish",
+					  "abbr",
+					  "dst",
+					  "gmt",
+					  NULL);
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
     rb_define_method(rb_cTime, "marshal_dump", time_mdump, 0);

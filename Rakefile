@@ -42,6 +42,7 @@ end
 
 desc "build tz database"
 task :zoneinfo => :zic do
+  # If you want POSIX compatibility, use "America/New_York".
   posixrules =	'America/New_York'
   dir = 'tzdata'
   places = %w{africa asia europe northamerica antarctica
