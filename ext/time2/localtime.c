@@ -101,6 +101,9 @@ static struct state gmtmem;
 static int gmt_is_set = 0;
 int last_ttinfo_index = 0;
 
+int year_days[] = {
+    -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 364
+};
 
 static long
 detzcode(const char *codep)
@@ -1520,15 +1523,18 @@ const pg_tz *tz)
 	register int			i, j;
 	register int			saved_seconds;
 	register long			li;
-	register pg_time_t			lo;
-	register pg_time_t			hi;
+	register pg_time_t		lo;
+	register pg_time_t		hi;
+	int narrow_attempt;
 	long				y;
 	pg_time_t				newt;
 	pg_time_t				t;
 	struct pg_tm			yourtm, mytm;
+	
 
 	*okayp = FALSE;
 	yourtm = *tmp;
+	narrow_attempt = 0;
 	if (do_norm_secs) {
 		if (pg_normalize_overflow(&yourtm.tm_min, &yourtm.tm_sec,
 			SECSPERMIN))
@@ -1606,10 +1612,27 @@ const pg_tz *tz)
 		else	hi = (pg_time_t) FLT_MAX;
 		lo = -hi;
 	} else {
-		lo = 1;
-		for (i = 0; i < (int) TYPE_BIT(pg_time_t) - 1; ++i)
-			lo *= 2;
-		hi = -(lo + 1);
+		if (yourtm.tm_year > 70) { /* Attempt to narrow search interval */
+			pg_time_t seconds = yourtm.tm_sec + yourtm.tm_min*SECSPERMIN + yourtm.tm_hour*SECSPERHOUR;
+			pg_time_t year = yourtm.tm_year;
+			/* Days in current year */
+			pg_time_t days = year_days[yourtm.tm_mon] + ((yourtm.tm_mon > 1 && isleap(year)) ? 1 : 0);
+
+			/* 17 - number of leap years in interval 1900 - 1970 */
+			days += (year - 70) * year_lengths[0] + ((year - 1) >> 2) - 17;
+			days += yourtm.tm_mday;
+			seconds += days * SECSPERDAY;			
+			lo = seconds - 13 * SECSPERHOUR;
+			hi = seconds + 13 * SECSPERHOUR;
+			narrow_attempt = 1;
+		}
+		else {
+		try_full_search:
+			lo = 1;
+			for (i = 0; i < (int) TYPE_BIT(pg_time_t) - 1; ++i)
+				lo *= 2;
+			hi = -(lo + 1);
+		}
 	}
 	for ( ; ; ) {
 		t = lo / 2 + hi / 2;
@@ -1675,6 +1698,11 @@ const pg_tz *tz)
 				goto label;
 			}
 		}
+		if (narrow_attempt) {
+			narrow_attempt = 0; 
+			goto try_full_search;
+		}
+
 		return -1;
 	}
 label:

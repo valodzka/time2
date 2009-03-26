@@ -11,6 +11,7 @@ class TestDateStrptime < Test::Unit::TestCase
     assert_equal 0, t.min
     assert_equal 0, t.sec
     assert_equal 0, t.nsec
+    assert_equal 1199138400, t.to_i
   end
 
   def test_fill_gap_if_low_given

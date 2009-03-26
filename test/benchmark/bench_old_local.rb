@@ -4,11 +4,17 @@ require 'benchmark'
 WIDTH = 15
 
 n = 500000
+ti = Time.utc(1971, 12, 1,  1, 30, 30)
 
-Benchmark.benchmark("Time#local" + Benchmark::CAPTION, WIDTH, Benchmark::FMTSTR){|r|
-  r.report("old"){
+Benchmark.benchmark("old Time#local" + Benchmark::CAPTION, WIDTH, Benchmark::FMTSTR){|r|
+  r.report("Time#local"){
     n.times{
-      t = Time.local(2008, 12, 1,  1, 30, 30)
+      t = Time.local(1971, 12, 1,  1, 30, 30)
+    }
+  }
+  r.report("Time#getlocal"){
+    n.times{
+      t = ti.getlocal
     }
   }
 }
