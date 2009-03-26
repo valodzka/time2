@@ -2726,6 +2726,13 @@ timezone_default(struct pg_tz *dflt)
     return tz;
 }
 
+/*
+ *  call-seq:
+ *     TimeZone[zone_name] => timezone object
+ *
+ *  Returns timezon object by it name, either zone name or string in posix format,
+ *  see <code>TimeZone#local</code> for more info
+ */
 static VALUE
 timezone_get(VALUE klass, VALUE name)
 {
@@ -2736,19 +2743,24 @@ timezone_get(VALUE klass, VALUE name)
 
 /*
  *  call-seq:
- *     TimeZone.local(new_timezone) -> old local timezone
- *     TimeZone.local -> current local timezone
+ *     TimeZone.local(new_timezone) -> old local time zone
+ *     TimeZone.local -> current local time zone
  *
- *  Sets timezone which will be used as a local either time zone name from database
- *  or {string in posix format}[http://www.gnu.org/software/coreutils/manual/libc/TZ-Variable.html]
+ *  Sets time zone which will be used as a local, either time zone name from database
+ *  or {string in posix format}[http://www.gnu.org/software/coreutils/manual/libc/TZ-Variable.html].
+ *  Can be string or <code>TimeZone</code> object
  *
- *     TimeZone.local                        # => #<TimeZone: Europe/Athens>
- *     TimeZone.local "Japan"                # => #<TimeZone: Europe/Athens>
- *     Time.now                              # => 2009-03-18 21:07:51 JST
- *     TimeZone.local "US/Pacific"           # => #<TimeZone: Japan>
- *     Time.now                              # => 2009-03-18 05:08:06 PDT
- *     TimeZone.local TimeZone["UTC"]        # => #<TimeZone: US/Pacific>
- *     Time.now                              # => 2009-03-18 12:08:17 UTC
+ *     TimeZone.local                                      # => #<TimeZone: Europe/Athens>
+ *     TimeZone.local "Japan"                              # => #<TimeZone: Europe/Athens>
+ *     Time.now                                            # => 2009-03-18 21:07:51 JST
+ *     TimeZone.local "US/Pacific"                         # => #<TimeZone: Japan>
+ *     Time.now                                            # => 2009-03-18 05:08:06 PDT
+ *     TimeZone.local TimeZone["UTC"]                      # => #<TimeZone: US/Pacific>
+ *     Time.now                                            # => 2009-03-18 12:08:17 UTC
+ *     TimeZone.local 'GMT0BST-1,87/01:00:00,297/02:00:00' # => #<TimeZone: UTC>
+ *
+ *  Last call set local zone as GMT -1 hour, +1 or +2 hours, with 87 and 297 as days of
+ *  transition to summer time and back
  */
 static VALUE
 timezone_default_set_get(int argc, VALUE *argv, VALUE klass)
@@ -2771,7 +2783,7 @@ timezone_default_set_get(int argc, VALUE *argv, VALUE klass)
  *  call-seq:
  *     TimeZone.for_country(contry_name) -> array
  *
- *  Return array of timezones for given (as ISO3166 code) country
+ *  Return array of time zones for given (as ISO3166 code) country
  *
  *     TimeZone.for_country('ES') #=> ["Europe/Madrid", "Africa/Ceuta", "Atlantic/Canary"]
  */
@@ -2791,7 +2803,6 @@ timezone_for_contry(VALUE klass, VALUE country)
 
 /*
  *  call-seq:
- *     timezone.name => string
  *     timezone.to_s => string
  *
  *  Return a string with name of the timezone
@@ -2835,23 +2846,7 @@ timezone_inspect(VALUE timezone)
 
     return str;
 }
-/*
- *  <code>Time</code> is an abstraction of dates and times. Time is
- *  stored internally as the number of seconds and nanoseconds since
- *  the <em>Epoch</em>, January 1, 1970 00:00 UTC. On some operating
- *  systems, this offset is allowed to be negative. Also see the
- *  library modules <code>Date</code>. The
- *  <code>Time</code> class treats GMT (Greenwich Mean Time) and UTC
- *  (Coordinated Universal Time)<em>[Yes, UTC really does stand for
- *  Coordinated Universal Time. There was a committee involved.]</em>
- *  as equivalent.  GMT is the older way of referring to these
- *  baseline times but persists in the names of calls on POSIX
- *  systems.
- *
- *  All times are stored with some number of nanoseconds. Be aware of
- *  this fact when comparing times with each other---times that are
- *  apparently equal when displayed may be different when compared.
- */
+
 void
 Init_time2(void)
 {
@@ -2860,12 +2855,7 @@ Init_time2(void)
 #  define rb_intern(str) rb_intern_const(str)
 #endif
     VALUE tz_dir;
-#ifdef OLD_TIME_COMPAT
-	/* Ponter to function time_free used to detect is object is Time
-	   We get this pointer and use it to behave like old Time */
-    VALUE old_time = rb_funcall(rb_const_get(rb_cObject, rb_intern("Time")), rb_intern("now"), 0);
-    time_free = RDATA(old_time)->dfree;
-#endif
+
 	rb_require("tzdata"); /* should define $__tz_directory */
 	tz_dir = rb_gv_get("$__tz_directory");
     rb_tzdir = StringValueCStr(tz_dir);
@@ -2874,6 +2864,23 @@ Init_time2(void)
     id_mul = rb_intern("*");
     id_submicro = rb_intern("submicro");
 
+    /*
+     *  <code>Time</code> is an abstraction of dates and times. Time is
+     *  stored internally as the number of seconds and nanoseconds since
+     *  the <em>Epoch</em>, January 1, 1970 00:00 UTC. On some operating
+     *  systems, this offset is allowed to be negative. Also see the
+     *  library modules <code>Date</code>. The
+     *  <code>Time</code> class treats GMT (Greenwich Mean Time) and UTC
+     *  (Coordinated Universal Time)<em>[Yes, UTC really does stand for
+     *  Coordinated Universal Time. There was a committee involved.]</em>
+     *  as equivalent.  GMT is the older way of referring to these
+     *  baseline times but persists in the names of calls on POSIX
+     *  systems.
+     *
+     *  All times are stored with some number of nanoseconds. Be aware of
+     *  this fact when comparing times with each other---times that are
+     *  apparently equal when displayed may be different when compared.
+     */
     rb_cTime = rb_define_class("Time", rb_cObject);
     rb_include_module(rb_cTime, rb_mComparable);
     rb_require("time"); /* defines strptime which we wil redefine later */
@@ -2956,6 +2963,14 @@ Init_time2(void)
     rb_define_method(rb_cTime, "_dump", time_dump, -1);
     rb_define_singleton_method(rb_cTime, "_load", time_load, 1);
 
+	/*
+     *  <code>TimeZone</code> is abstraction for time zones. <code>TimeZone</code> object can
+     *  be accessed via <code>TimeZone#[]</code> method, which accepts a string with time zone
+     *  name from {tz database}[http://www.twinsun.com/tz/tz-link.htm] (preferably)or string with
+     *  {timezone rules in posix format}[http://www.gnu.org/software/coreutils/manual/libc/TZ-Variable.html].
+     *  <code>TimeZone</code> objects and strings with their names or definisions are interchangeable
+     *  in any API methods.
+	 */
     rb_cTimeZone = rb_define_class("TimeZone", rb_cObject);
 
     rb_define_singleton_method(rb_cTimeZone, "[]", timezone_get, 1);
@@ -2976,6 +2991,12 @@ Init_time2(void)
 					  "dst",
 					  "gmt",
 					  NULL);
+#ifdef OLD_TIME_COMPAT
+	/* Ponter to function time_free used to detect is object is Time
+	   We get this pointer and use it to behave like old Time */
+    VALUE old_time = rb_funcall(rb_const_get(rb_cObject, rb_intern("Time")), rb_intern("now"), 0);
+    time_free = RDATA(old_time)->dfree;
+#endif
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
     rb_define_method(rb_cTime, "marshal_dump", time_mdump, 0);
