@@ -31,4 +31,8 @@ class TestLocalUTC < Test::Unit::TestCase
       assert_equal 2005, leap.year
     end
   end
+
+  def test_hash_args
+    t = Time.local(:year => 2009, :yday => 100)
+  end
 end

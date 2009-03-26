@@ -36,7 +36,7 @@
    void rb_enc_copy(VALUE a, VALUE b) {}
 #endif
 
-#ifndef TIMET2NUM /* compatitbility with 1.9 */
+#ifndef TIMET2NUM /* compatitbility with 1.8 */
 #  define TIMET2NUM(x) LONG2NUM(x)
 #endif
 #ifndef NUM2TIMET
@@ -509,6 +509,18 @@ obj2long1000(VALUE obj)
     return NUM2LONG(rb_funcall(obj, id_mul, 1, INT2FIX(1000)));
 }
 
+static int
+time_arg_i(st_data_t key, st_data_t val, st_data_t v)
+{
+    VALUE *store = (VALUE*)v;
+    VALUE symbol = (VALUE)key;
+    VALUE value = (VALUE)val;
+
+    
+
+    return ST_CONTINUE;
+}
+
 static void
 time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz)
 {
@@ -526,16 +538,34 @@ time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz)
 	v[4] = argv[1];
 	v[5] = argv[0];
 	v[6] = Qnil;
-	tm->tm_isdst = RTEST(argv[8]) ? 1 : 0;
+	switch(argv[8]) {
+	case Qtrue:
+	    tm->tm_isdst = 1;
+	    break;
+	case Qfalse:
+	    tm->tm_isdst = 0;
+	    break;
+	case Qnil:
+	    tm->tm_isdst = -1;
+	    break;
+	default:
+	    rb_raise(rb_eArgError, "dst value should be true, false or nil");
+	}
         GetOrInitTZ(argv[9], *tz);
     }
     else {
-	rb_scan_args(argc, argv, "17", &v[0],&v[1],&v[2],&v[3],&v[4],&v[5],&v[6],&v[7]);
-	/* v[6] may be usec or zone (parsedate) */
-	/* v[7] is wday (parsedate; ignored) */
-	tm->tm_wday = -1;
-	tm->tm_isdst = -1;
-        *tz = NULL;
+	if (argc == 1 && TYPE(argv[0]) == T_HASH) {
+	    st_foreach(RHASH_TBL(argv[0]), time_arg_i, v); 
+	    //v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = v[6] = v[7] = INT2FIX(0);
+	}
+	else {
+	    rb_scan_args(argc, argv, "17", &v[0],&v[1],&v[2],&v[3],&v[4],&v[5],&v[6],&v[7]);
+	    /* v[6] may be usec or zone (parsedate) */
+	    /* v[7] is wday (parsedate; ignored) */
+	    tm->tm_wday = -1;
+	    tm->tm_isdst = -1;
+	    *tz = NULL;
+	}
     }
 
     year = obj2long(v[0]);
