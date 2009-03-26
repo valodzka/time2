@@ -42,6 +42,9 @@
 #ifndef NUM2TIMET
 #  define NUM2TIMET(x) NUM2LONG(x)
 #endif
+#ifndef RHASH_TBL
+#  define RHASH_TBL(x) RHASH(x)->tbl
+#endif
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -519,30 +522,28 @@ time_arg_i(st_data_t key, st_data_t val, st_data_t store)
     ID id = SYM2ID(symbol);
 
     if (SYMBOL_P(symbol)) {
-	if (id == id_year)
-	    v[0] = value;
-	else if (id == id_mon)
-	    v[1] = value;
-	else if (id == id_mday || id == id_day)
-	    v[2] = value;
-	else if (id == id_wday)
-	    ;
-	else if (id == id_yday)
-	    ;
-	else if (id == id_hour)
-	    v[3] = value;
-	else if (id == id_min)
-	    v[4] = value;
-	else if (id == id_sec)
-	    v[5] = value;
-	else if (id == id_dst || id == id_isdst)
-	    v[8] = value;
-	else if (id == id_tz)
-	    v[7] = value;
-	else {
-	    VALUE id_str = rb_id2str(id);
-	    rb_raise(rb_eArgError, "unknown key: %s", StringValueCStr(id_str));
-	}
+		if (id == id_year)
+			v[0] = value;
+		else if (id == id_mon)
+			v[1] = value;
+		else if (id == id_mday || id == id_day)
+			v[2] = value;
+		else if (id == id_wday)
+			;
+		else if (id == id_yday)
+			;
+		else if (id == id_hour)
+			v[3] = value;
+		else if (id == id_min)
+			v[4] = value;
+		else if (id == id_sec)
+			v[5] = value;
+		else if (id == id_dst || id == id_isdst)
+			v[8] = value;
+		else if (id == id_tz)
+			v[7] = value;
+		else
+			rb_raise(rb_eArgError, "unknown key: %s", rb_id2name(id));
     }
     else
         rb_raise(rb_eArgError, "invalid argument type: %s", rb_obj_classname(symbol));
