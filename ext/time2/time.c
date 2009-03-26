@@ -56,6 +56,7 @@
 VALUE rb_cTime;
 VALUE rb_cTimeZone;
 VALUE rb_sTimeZonePeriod;
+static ID id_year, id_mon, id_day, id_mday, id_wday, id_yday, id_hour, id_min, id_sec, id_dst, id_isdst, id_tz;
 
 static VALUE time_utc_offset _((VALUE));
 static struct pg_tz* timezone_default(struct pg_tz *dflt);
@@ -451,7 +452,7 @@ time_s_at(int argc, VALUE *argv, VALUE klass)
 	  ts.tv_nsec = NUM2LONG(rb_funcall(t, id_mul, 1, INT2FIX(1000)));
     }
     else {
-		/* HACK: to sure that function will be caled from this module, not from ruby library */
+		/* HACK: to be sure that function will be caled from this module, not from ruby library */
 	  ts = rb_time_timespec_static(time);
     }
     t = time_new_internal(klass, ts.tv_sec, ts.tv_nsec, timezone_default(NULL));
@@ -510,13 +511,41 @@ obj2long1000(VALUE obj)
 }
 
 static int
-time_arg_i(st_data_t key, st_data_t val, st_data_t v)
+time_arg_i(st_data_t key, st_data_t val, st_data_t store)
 {
-    VALUE *store = (VALUE*)v;
+    VALUE *v = (VALUE*)store;
     VALUE symbol = (VALUE)key;
     VALUE value = (VALUE)val;
+    ID id = SYM2ID(symbol);
 
-    
+    if (SYMBOL_P(symbol)) {
+	if (id == id_year)
+	    v[0] = value;
+	else if (id == id_mon)
+	    v[1] = value;
+	else if (id == id_mday || id == id_day)
+	    v[2] = value;
+	else if (id == id_wday)
+	    ;
+	else if (id == id_yday)
+	    ;
+	else if (id == id_hour)
+	    v[3] = value;
+	else if (id == id_min)
+	    v[4] = value;
+	else if (id == id_sec)
+	    v[5] = value;
+	else if (id == id_dst || id == id_isdst)
+	    v[8] = value;
+	else if (id == id_tz)
+	    v[7] = value;
+	else {
+	    VALUE id_str = rb_id2str(id);
+	    rb_raise(rb_eArgError, "unknown key: %s", StringValueCStr(id_str));
+	}
+    }
+    else
+        rb_raise(rb_eArgError, "invalid argument type: %s", rb_obj_classname(symbol));
 
     return ST_CONTINUE;
 }
@@ -524,7 +553,10 @@ time_arg_i(st_data_t key, st_data_t val, st_data_t v)
 static void
 time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz)
 {
-    VALUE v[8];
+    /* 0 -> year, 1 -> month, 2 -> day, 3 -> hour, 
+       4 -> min, 5 -> sec, 6 -> nsec,   7 -> zone
+       8 -> dst */
+    VALUE v[9] = { Qnil, Qnil, Qnil, Qnil, Qnil, Qnil, Qnil, Qnil, Qnil}; 
     int i;
     long year;
 
@@ -538,25 +570,12 @@ time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz)
 	v[4] = argv[1];
 	v[5] = argv[0];
 	v[6] = Qnil;
-	switch(argv[8]) {
-	case Qtrue:
-	    tm->tm_isdst = 1;
-	    break;
-	case Qfalse:
-	    tm->tm_isdst = 0;
-	    break;
-	case Qnil:
-	    tm->tm_isdst = -1;
-	    break;
-	default:
-	    rb_raise(rb_eArgError, "dst value should be true, false or nil");
-	}
-        GetOrInitTZ(argv[9], *tz);
+	v[7] = argv[9];
+	v[8] = argv[8];
     }
     else {
 	if (argc == 1 && TYPE(argv[0]) == T_HASH) {
-	    st_foreach(RHASH_TBL(argv[0]), time_arg_i, v); 
-	    //v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = v[6] = v[7] = INT2FIX(0);
+	    st_foreach(RHASH_TBL(argv[0]), time_arg_i, (st_data_t)v); 
 	}
 	else {
 	    rb_scan_args(argc, argv, "17", &v[0],&v[1],&v[2],&v[3],&v[4],&v[5],&v[6],&v[7]);
@@ -624,6 +643,25 @@ time_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz)
     else {
 	/* when argc == 8, v[6] is timezone, but ignored */
         tm->tm_sec  = NIL_P(v[5])?0:obj2nsec(v[5], nsec);
+    }
+
+    if (!NIL_P(v[7]))
+	GetOrInitTZ(v[7], *tz);
+    else
+	*tz = NULL;
+
+    switch(v[8]) {
+    case Qtrue:
+	tm->tm_isdst = 1;
+	break;
+    case Qfalse:
+	tm->tm_isdst = 0;
+	break;
+    case Qnil:
+	tm->tm_isdst = -1;
+	break;
+    default:
+	rb_raise(rb_eArgError, "dst argument must be true, false, or nil");
     }
 
     /* value validation */
@@ -2855,14 +2893,33 @@ Init_time2(void)
 #  define rb_intern(str) rb_intern_const(str)
 #endif
     VALUE tz_dir;
+#ifdef OLD_TIME_COMPAT
+    /* Ponter to function time_free used to detect is object is Time
+       We get this pointer and use it to behave like old Time */
+    VALUE old_time = rb_funcall(rb_const_get(rb_cObject, rb_intern("Time")), rb_intern("now"), 0);
+    time_free = RDATA(old_time)->dfree;
+#endif
 
-	rb_require("tzdata"); /* should define $__tz_directory */
-	tz_dir = rb_gv_get("$__tz_directory");
+    rb_require("tzdata"); /* should define $__tz_directory */
+    tz_dir = rb_gv_get("$__tz_directory");
     rb_tzdir = StringValueCStr(tz_dir);
 
     id_divmod = rb_intern("divmod");
     id_mul = rb_intern("*");
     id_submicro = rb_intern("submicro");
+
+    id_year = rb_intern("year");
+    id_mon = rb_intern("mon");
+    id_day = rb_intern("day");
+    id_mday = rb_intern("mday");
+    id_wday = rb_intern("wday");
+    id_yday = rb_intern("yday");
+    id_hour = rb_intern("hour");
+    id_min = rb_intern("min");
+    id_sec = rb_intern("sec");
+    id_dst = rb_intern("dst");
+    id_isdst = rb_intern("isdst");
+    id_tz = rb_intern("tz");
 
     /*
      *  <code>Time</code> is an abstraction of dates and times. Time is
@@ -2991,12 +3048,7 @@ Init_time2(void)
 					  "dst",
 					  "gmt",
 					  NULL);
-#ifdef OLD_TIME_COMPAT
-	/* Ponter to function time_free used to detect is object is Time
-	   We get this pointer and use it to behave like old Time */
-    VALUE old_time = rb_funcall(rb_const_get(rb_cObject, rb_intern("Time")), rb_intern("now"), 0);
-    time_free = RDATA(old_time)->dfree;
-#endif
+
 #if 0
     /* Time will support marshal_dump and marshal_load in the future (1.9 maybe) */
     rb_define_method(rb_cTime, "marshal_dump", time_mdump, 0);
