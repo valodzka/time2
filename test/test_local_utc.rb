@@ -50,4 +50,10 @@ class TestLocalUTC < Test::Unit::TestCase
     #assert_equal t.mon, 4
      #assert_equal t.day, 10
   end
+
+  def test_hash_args_error
+    assert_raise ArgumentError do
+      Time.utc(:yer => 2009)
+    end
+  end
 end

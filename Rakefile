@@ -40,6 +40,12 @@ task :bench do
   ruby "test/benchmark/bench_strptime.rb"
 end
 
+desc "run extra benchmarks"
+task :exbench do
+  ruby "test/benchmark/bench_old_local.rb"
+  ruby "test/benchmark/bench_new_local.rb"
+end
+
 desc "build tz database"
 task :zoneinfo => :zic do
   # If you want POSIX compatibility, use "America/New_York".

@@ -2482,7 +2482,7 @@ time_strptime(VALUE klass, VALUE str, VALUE format)
 
 	if (!rb_enc_str_asciicompat_p(format) || !rb_enc_str_asciicompat_p(str)) {
 		rb_raise(rb_eArgError, "arguments should have ASCII compatible encoding");
-    }
+	}
 
     tm.tm_year = INT_MIN;
     tm.tm_mon = INT_MIN;
