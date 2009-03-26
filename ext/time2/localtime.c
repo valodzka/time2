@@ -1628,6 +1628,7 @@ const pg_tz *tz)
 		}
 		else {
 		try_full_search:
+			narrow_attempt = 0;
 			lo = 1;
 			for (i = 0; i < (int) TYPE_BIT(pg_time_t) - 1; ++i)
 				lo *= 2;
@@ -1699,7 +1700,6 @@ const pg_tz *tz)
 			}
 		}
 		if (narrow_attempt) {
-			narrow_attempt = 0; 
 			goto try_full_search;
 		}
 
