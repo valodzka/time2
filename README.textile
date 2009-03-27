@@ -38,6 +38,10 @@ At the moment library uses global variable <code>$__tz_directory</code> as a tz 
 
 Many OS (but "not all":http://microsoft.com) contain own tz database, so if you want to use system (or any other) tz database, you should set <code>$__tz_directory</code> before <code>require 'time2'</code> statement.
 
+h5. How to change default time zone?
+
+Enviroment variable <code>TZ</code> is checked first in process of default time zone search. So, just set it.
+
 h3. Example
 
 Short <code>irb</code> session:
@@ -143,14 +147,15 @@ h3. Portability
 
 Code tested on Debian Lenny with GCC 4.3.3 and Windows with VC 9
 
-h3. Open questions
+h3. Drawbacks
 
-* how should %N work?
-* whether %Q be implemented?
+* Library initialisation requires expensive directory scan and takes about two tenth of second. If this is appreciably for you, this can be avoided by setting <code>TZ</code> enviroment variable
+* Some platforms have more efficient time manipulation functions than library uses. For example, on Windows has limited but fast mktime implementation, so creation of new <code>Time</code> object with <code>time2</code> is slower (about a 0.000004 seconds per object)
+* Windows has less exact time zones system than tz database, so default timezone determined by library may be not match current place exactly. For example, Windows has one time zone for Kiev, Istambul and Athens, but tz database has three timezones: Europe/Kiev, Europe/Istambul and Europe/Athens, so windows timezone will be mapped on first suitable database time zone, in this example - Europe/Athens. This behavior can be changed by setting <code>TZ</code> enviroment database.
 
-h3. TODO
+h3. TODO & open question
 
-* <code>strptime</code> implementation doesn't support some special flags (%W, %u)
+* <code>strptime</code> implementation doesn't support some special flags (%W, %u, how should %N work? whether %Q be implemented?)
 * code isn't clean enough, many old code should be removed
 * ugly english :)
 
