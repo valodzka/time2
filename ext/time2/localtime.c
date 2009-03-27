@@ -101,8 +101,13 @@ static struct state gmtmem;
 static int gmt_is_set = 0;
 int last_ttinfo_index = 0;
 
-int year_days[] = {
-    -1, 30, 58, 89, 119, 150, 180, 211, 242, 272, 303, 333, 364
+
+const unsigned short int year_days[2][13] =
+{
+    /* Normal years.  */
+    { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 },
+    /* Leap years.  */
+    { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 }
 };
 
 static long
@@ -1616,12 +1621,12 @@ const pg_tz *tz)
 			pg_time_t seconds = yourtm.tm_sec + yourtm.tm_min*SECSPERMIN + yourtm.tm_hour*SECSPERHOUR;
 			pg_time_t year = yourtm.tm_year;
 			/* Days in current year */
-			pg_time_t days = year_days[yourtm.tm_mon] + ((yourtm.tm_mon > 1 && isleap(year)) ? 1 : 0);
+			pg_time_t days = year_days[isleap(year)][yourtm.tm_mon];
 
 			/* 17 - number of leap years in interval 1900 - 1970 */
 			days += (year - 70) * year_lengths[0] + ((year - 1) >> 2) - 17;
-			days += yourtm.tm_mday;
-			seconds += days * SECSPERDAY;			
+			days += yourtm.tm_mday - 1;
+			seconds += days * SECSPERDAY;
 			lo = seconds - 13 * SECSPERHOUR;
 			hi = seconds + 13 * SECSPERHOUR;
 			narrow_attempt = 1;
