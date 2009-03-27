@@ -129,6 +129,7 @@ struct tzhead
 #define EPOCH_YEAR	1970
 #define EPOCH_WDAY	TM_THURSDAY
 
+#define elapsed_leaps(y)  (((y - 1)/4) - ((y - 1)/100) + ((y + 299)/400))
 #define isleap(y) (((y) % 4) == 0 && (((y) % 100) != 0 || ((y) % 400) == 0))
 
 /*

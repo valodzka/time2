@@ -1624,7 +1624,7 @@ const pg_tz *tz)
 			pg_time_t days = year_days[isleap(year)][yourtm.tm_mon];
 
 			/* 17 - number of leap years in interval 1900 - 1970 */
-			days += (year - 70) * year_lengths[0] + ((year - 1) >> 2) - 17;
+			days += (year - 70) * year_lengths[0] + elapsed_leaps(year) - 17;
 			days += yourtm.tm_mday - 1;
 			seconds += days * SECSPERDAY;
 			lo = seconds - 13 * SECSPERHOUR;
@@ -1657,17 +1657,23 @@ const pg_tz *tz)
 		if (dir != 0) {
 			if (t == lo) {
 				++t;
-				if (t <= lo)
+				if (t <= lo) {		
+					if (narrow_attempt) goto try_full_search;
 					return -1;
+				}
 				++lo;
 			} else if (t == hi) {
 				--t;
-				if (t >= hi)
+				if (t >= hi) {
+					if (narrow_attempt) goto try_full_search;
 					return -1;
+				}
 				--hi;
 			}
-			if (lo > hi)
+			if (lo > hi) {
+				if (narrow_attempt) goto try_full_search;
 				return -1;
+			}
 			if (dir > 0)
 				hi = t;
 			else	lo = t;
@@ -1704,16 +1710,16 @@ const pg_tz *tz)
 				goto label;
 			}
 		}
-		if (narrow_attempt) {
-			goto try_full_search;
-		}
+		if (narrow_attempt) goto try_full_search;
 
 		return -1;
 	}
 label:
 	newt = t + saved_seconds;
-	if ((newt < t) != (saved_seconds < 0))
+	if ((newt < t) != (saved_seconds < 0)) {
+		if (narrow_attempt) goto try_full_search;
 		return -1;
+	}
 	t = newt;
 	if ((*funcp)(&t, offset, tmp, tz))
 		*okayp = TRUE;
