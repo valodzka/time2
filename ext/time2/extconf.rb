@@ -53,7 +53,7 @@ create_makefile("zic")
 FileUtils.mv('Makefile', 'ZMakefile')
 
 # Time2 - main extension
-$objs = %w{asctime.o  localtime.o  pgtz.o strftime.o  strptime.o  time.o}
+$objs = %w{asctime.o  localtime.o  pgtz.o strptime.o  time2.o}
 create_makefile("time2")
 
 

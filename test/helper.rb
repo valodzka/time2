@@ -8,10 +8,11 @@ def ruby19
 end
 
 def with_tz(tz)
-  before = TimeZone.local(tz)
+  before = ENV['TZ']
+  ENV['TZ'] = tz
   yield
 ensure
-  TimeZone.local(before)
+  ENV['TZ'] = before
 end
 
 # API missing in ruby 1.8.6

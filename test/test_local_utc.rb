@@ -34,14 +34,14 @@ class TestLocalUTC < Test::Unit::TestCase
 
   def test_hash_args
     with_tz("America/New_York") do
-        t1 = Time.local :year => 2009, :mon => 11, :day => 1, :hour => 1,  :min => 30, :dst => false
-        t2 = Time.local :year => 2009, :mon => 11, :day => 1, :hour => 1,  :min => 30, :dst => true
-        assert_equal t1.dst?, false
-        assert_equal t2.dst?, true
-        assert_equal t1.day, t2.day
-        assert_equal t1.hour, t2.hour
-        assert_equal t1.min, t2.min
-        assert_equal t1.sec, t2.sec
+      t1 = Time.local :year => 2009, :mon => 11, :day => 1, :hour => 1,  :min => 30, :dst => false
+      t2 = Time.local :year => 2009, :mon => 11, :day => 1, :hour => 1,  :min => 30, :dst => true
+      assert_equal t1.dst?, false
+      assert_equal t2.dst?, true
+      assert_equal t1.day, t2.day
+      assert_equal t1.hour, t2.hour
+      assert_equal t1.min, t2.min
+      assert_equal t1.sec, t2.sec
     end
     t = Time.utc(:year => 2009, :yday => 100)
     # TODO: implement this

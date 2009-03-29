@@ -1149,48 +1149,14 @@ identify_system_timezone(void)
 
 
 /*
- * We keep loaded timezones in a hashtable so we don't have to
- * load and parse the TZ definition file every time one is selected.
- * Because we want timezone names to be found case-insensitively,
- * the hash key is the uppercased name of the zone.
- */
-typedef struct pg_tz_cache_struct
-{
-	/* tznameupper contains the all-upper-case name of the timezone */
-	char		tznameupper[TZ_STRLEN_MAX + 1];
-	pg_tz		tz;
-        struct pg_tz_cache_struct     *next;
-
-} pg_tz_cache;
-
-pg_tz_cache *start = 0;
-
-pg_tz_cache* find_in_cache(const char *name) {
-    pg_tz_cache *it = start;
-    while(it) {
-        if (strcmp(it->tznameupper, name) == 0)
-            return it;
-        else
-            it = it->next;
-    }
-    return 0;
-}
-
-pg_tz_cache* add_to_cache() {
-    pg_tz_cache *new_element = malloc(sizeof(struct pg_tz_cache_struct));
-    new_element->next = start;
-    start = new_element;
-    return new_element;
-}
-/*
- * Load a timezone from file or from cache.
+ * Load a timezone from file.
  * Does not verify that the timezone is acceptable!
  */
 struct pg_tz *
 pg_tzset(const char *name)
 {
-	pg_tz_cache *tzp;
 	struct state tzstate;
+	struct pg_tz *tz;
 	char		uppername[TZ_STRLEN_MAX + 1];
 	char		canonname[TZ_STRLEN_MAX + 1];
 	char	   *p;
@@ -1210,13 +1176,6 @@ pg_tzset(const char *name)
 		*p++ = toupper((unsigned char) *name++);
 	*p = '\0';
 
-	tzp = find_in_cache(uppername);
-
-	if (tzp)
-	{
-		/* Timezone found in cache, nothing more to do */
-		return &tzp->tz;
-	}
 
 	if (tzload(uppername, canonname, &tzstate, TRUE) != 0)
 	{
@@ -1225,18 +1184,14 @@ pg_tzset(const char *name)
 			/* Unknown timezone. Fail our call instead of loading GMT! */
 			return NULL;
 		}
-		/* For POSIX timezone specs, use uppercase name as canonical */
-		strcpy(canonname, uppername);
 	}
 
-	/* Save timezone in the cache */
-	tzp = add_to_cache();
+	tz = malloc(sizeof(struct pg_tz)); /* memory should be freed by calling function */
 
-	/* hash_search already copied uppername into the hash key */
-	strcpy(tzp->tz.TZname, canonname);
-	memcpy(&tzp->tz.state, &tzstate, sizeof(tzstate));
+	strcpy(tz->TZname, canonname);
+	memcpy(&tz->state, &tzstate, sizeof(tzstate));
 
-	return &tzp->tz;
+	return tz;
 }
 
 
