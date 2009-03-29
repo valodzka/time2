@@ -10,6 +10,7 @@
 #include <ruby/ruby.h>
 #include <ruby/st.h>
 #include <ruby/intern.h>
+#include <ruby/encoding.h>
 
 static ID id_year, id_mon,
 	id_day, id_mday, id_wday, id_yday,
@@ -64,6 +65,19 @@ struct timespec rb_time_timespec(VALUE time);
 		COPY_TM_GMTOFF(system_tm.tm_gmtoff = (tm).tm_gmtoff);		\
 		COPY_TM_TZ(system_tm.tm_zone = (tm).tm_zone);				\
     } while(0)
+#define COPY_ORIG_TO_TM(system_tm, tm) do {						\
+		tm.tm_sec = (system_tm).tm_sec;							\
+		tm.tm_min = (system_tm).tm_min;							\
+		tm.tm_hour = (system_tm).tm_hour;						\
+		tm.tm_mday = (system_tm).tm_mday;						\
+		tm.tm_mon = (system_tm).tm_mon;							\
+		tm.tm_year = (system_tm).tm_year;						\
+		tm.tm_wday = (system_tm).tm_wday;						\
+		tm.tm_yday = (system_tm).tm_yday;						\
+		tm.tm_isdst = (system_tm).tm_isdst;						\
+		COPY_TM_GMTOFF(tm.tm_gmtoff = (system_tm).tm_gmtoff);	\
+		COPY_TM_TZ(tm.tm_zone = (system_tm).tm_zone);			\
+	} while(0)
 
 
 static struct pg_tz*
@@ -480,6 +494,146 @@ time2_s_mktime(int argc, VALUE *argv, VALUE klass)
     return time2_utc_or_local(argc, argv, Qfalse, klass);
 }
 
+static void
+time2_fill_gaps_tm(struct pg_tm *tm)
+{
+	struct pg_tm tm_now;
+	int fill_now = 1;
+
+	if (tm->tm_year == INT_MIN) {
+		IF_HAVE_GMTIME_R(struct tm result);
+		pg_time_t now = time(NULL);
+        LOCALTIME(&now, result);
+		COPY_ORIG_TO_TM(result, tm_now);
+		tm->tm_year = tm_now.tm_year;
+	}
+	else
+		fill_now = 0;
+
+	if (tm->tm_yday != INT_MIN) {
+		/* let mktime detect appropriate month and day */
+		tm->tm_mday = tm->tm_yday + 1;
+		tm->tm_mon = 0;
+	}
+
+	if (tm->tm_mon == INT_MIN)
+		tm->tm_mon = fill_now ? tm_now.tm_mon : 0;
+	else
+		fill_now = 0;
+
+	if (tm->tm_mday == INT_MIN)
+		tm->tm_mday = fill_now ? tm_now.tm_mday : 1;
+	else
+		fill_now = 0;
+
+	if (tm->tm_hour == INT_MIN)
+		tm->tm_hour = fill_now ? tm_now.tm_hour : 0;
+	else
+		fill_now = 0;
+
+	if (tm->tm_min == INT_MIN)
+		tm->tm_min = fill_now ? tm_now.tm_min : 0;
+	else
+		fill_now = 0;
+
+	if (tm->tm_sec == INT_MIN)
+		tm->tm_sec = fill_now ? tm_now.tm_sec : 0;
+	else
+		fill_now = 0;
+}
+
+/*
+ *  call-seq:
+ *     Time.strptime( string, format ) => time
+ *
+ * Convert the <i>string</i> to time, using the format specified by <i>format</i>
+ *
+ * The format is composed of zero or more directives. Each directive is composed
+ * of one of the following:
+ * - one or more white-space characters;
+ * - an ordinary character (neither '%' nor a white-space character);
+ * - a conversion specification.
+ *
+ * Each conversion specification is composed of a '%' character followed by a
+ * conversion character which specifies the replacement required. The following
+ * conversion specifications are supported:
+ * - <s>%a - The abbreviated weekday name (``Sun'')</s>
+ * - <s>%A - The  full  weekday  name (``Sunday'')</s>
+ * - %b - The abbreviated month name (``Jan'')
+ * - %B - The  full  month  name (``January'')
+ * - <s>%c - The preferred local date and time representation</s>
+ * - %d - Day of the month (01..31)
+ * - %F - Equivalent to %Y-%m-%d (the ISO 8601 date format)
+ * - %H - Hour of the day, 24-hour clock (00..23)
+ * - %I - Hour of the day, 12-hour clock (01..12)
+ * - %j - Day of the year (001..366)
+ * - %L - Millisecond of the second (000..999)
+ * - %m - Month of the year (01..12)
+ * - %M - Minute of the hour (00..59)
+ * - %N - Fractional seconds digits, default is 9 digits (nanosecond)
+ * - - <s>%3N  millisecond (3 digits)
+ * - - %6N  microsecond (6 digits)
+ * - - %9N  nanosecond (9 digits)</s>
+ * - %p - Meridian indicator
+ * - <s>%P - Meridian indicator (``am''  or  ``pm'')</s>
+ * - %s - Number of seconds since 1970-01-01 00:00:00 UTC.
+ * - %S - Second of the minute (00..60)
+ * - <s>%U - Week  number  of the current year,
+ * starting with the first Sunday as the first
+ * day of the first week (00..53)
+ * - %W - Week  number  of the current year,
+ * starting with the first Monday as the first
+ * day of the first week (00..53)
+ * - %w - Day of the week (Sunday is 0, 0..6)</s>
+ * - %x - Preferred representation for the date alone, no time (%m/%d/%y by default)
+ * - %X - Preferred representation for the time alone, no date (%H:%M:%S by default)
+ * - %y - Year without a century (00..99)
+ * - %Y - Year with century
+ * - <s>%Z - Time zone name</s>
+ *
+ * TODO:
+ * - unknown modificators silently ignored
+ * - %j replace %m and %d undepend on order of arguments
+ * - document principe of gaps filling and replacement
+ * - %N behaves different from old strptime
+ * - '\0' in string will cause error
+ */
+static VALUE
+time2_strptime(VALUE klass, VALUE str, VALUE format)
+{
+    struct pg_tm tm;
+	struct tm tm_orig;
+    VALUE time_obj;
+    long nsec = 0;
+
+	StringValue(str);
+	StringValue(format);
+
+	if (!rb_enc_str_asciicompat_p(format) || !rb_enc_str_asciicompat_p(str)) {
+		rb_raise(rb_eArgError, "arguments should have ASCII compatible encoding");
+	}
+
+    tm.tm_year = INT_MIN;
+    tm.tm_mon = INT_MIN;
+    tm.tm_mday = INT_MIN;
+    tm.tm_hour = INT_MIN;
+    tm.tm_min = INT_MIN;
+    tm.tm_sec = INT_MIN;
+    tm.tm_wday = 0;
+    tm.tm_yday = INT_MIN;
+    tm.tm_isdst = -1;
+    tm.tm_zone = NULL;
+
+    if(!pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec))
+		rb_raise(rb_eArgError, "strptime error");
+
+    /* currently no timezone support */
+    time2_fill_gaps_tm(&tm);
+	COPY_TM_TO_ORIG(tm, tm_orig);
+
+	return rb_time_nano_new(time2_make_time_t_orig(&tm_orig, 0), nsec);
+}
+
 void
 Init_time2(void)
 {
@@ -516,8 +670,6 @@ Init_time2(void)
     rb_define_singleton_method(rb_cTime, "gm", time2_s_mkutc, -1);
     rb_define_singleton_method(rb_cTime, "local", time2_s_mktime, -1);
     rb_define_singleton_method(rb_cTime, "mktime", time2_s_mktime, -1);
-//    rb_define_singleton_method(rb_cTime, "strptime", time_strptime, 2);
-
-
+    rb_define_singleton_method(rb_cTime, "strptime", time2_strptime, 2);
 }
 

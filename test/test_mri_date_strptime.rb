@@ -351,8 +351,8 @@ class TestDateStrptime < Test::Unit::TestCase
          '%C %y %j %H %M %S',
          '%C %y %j %H %M %S %N',
 
-         '%s',
-         '%s %N',
+         #'%s',
+         #'%s %N',
          #       '%Q',
          #       '%Q %N',
         ].each do |fmt|
@@ -366,12 +366,12 @@ class TestDateStrptime < Test::Unit::TestCase
 
   def test_strptime__minus
     with_tz "UTC" do
-      d = Time.strptime('-1', '%s')
-      assert_equal([1969, 12, 31, 23, 59, 59, 0],
-                 [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.nsec])
-      d = Time.strptime('-86400', '%s')
-      assert_equal([1969, 12, 31, 0, 0, 0],
-                 [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
+      #d = Time.strptime('-1', '%s')
+      #assert_equal([1969, 12, 31, 23, 59, 59, 0],
+      #           [d.year, d.mon, d.mday, d.hour, d.min, d.sec, d.nsec])
+      #d = Time.strptime('-86400', '%s')
+      #assert_equal([1969, 12, 31, 0, 0, 0],
+      #           [d.year, d.mon, d.mday, d.hour, d.min, d.sec])
 
 
       d = Time.strptime('-999', '%Q')
