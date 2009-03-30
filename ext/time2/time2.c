@@ -501,10 +501,12 @@ time2_fill_gaps_tm(struct pg_tm *tm)
 	int fill_now = 1;
 
 	if (tm->tm_year == INT_MIN) {
-		IF_HAVE_GMTIME_R(struct tm result);
 		pg_time_t now = time(NULL);
-        LOCALTIME(&now, result);
-		COPY_ORIG_TO_TM(result, tm_now);
+		struct tm* resultp;
+		IF_HAVE_GMTIME_R(struct tm result);
+		
+		resultp = LOCALTIME(&now, result);
+		COPY_ORIG_TO_TM(*resultp, tm_now);
 		tm->tm_year = tm_now.tm_year;
 	}
 	else
