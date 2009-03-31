@@ -43,4 +43,12 @@ class TestDateStrptime < Test::Unit::TestCase
       end
     end
   end
+
+  def test_slash_0
+    t = Time.strptime "2008\0 5 \0 3", "%Y\0 %m \0 %d"
+    p t
+    assert_equal 2008, t.year
+    assert_equal 5, t.mon
+    assert_equal 3, t.day
+  end
 end

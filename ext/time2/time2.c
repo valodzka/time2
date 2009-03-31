@@ -598,16 +598,17 @@ time2_fill_gaps_tm(struct pg_tm *tm)
  * - %j replace %m and %d undepend on order of arguments
  * - document principe of gaps filling and replacement
  * - %N behaves different from old strptime
- * - '\0' in string will cause error
  */
 static VALUE
 time2_strptime(VALUE klass, VALUE str, VALUE format)
 {
-    struct pg_tm tm;
+	struct pg_tm tm;
 	struct tm tm_orig;
-    VALUE time_obj;
-    long nsec = 0;
-
+	VALUE time_obj;
+	long nsec = 0;
+	long len_str, len_fmt;
+	char *ptr_str, *ptr_fmt;
+	
 	StringValue(str);
 	StringValue(format);
 
@@ -615,22 +616,43 @@ time2_strptime(VALUE klass, VALUE str, VALUE format)
 		rb_raise(rb_eArgError, "arguments should have ASCII compatible encoding");
 	}
 
-    tm.tm_year = INT_MIN;
-    tm.tm_mon = INT_MIN;
-    tm.tm_mday = INT_MIN;
-    tm.tm_hour = INT_MIN;
-    tm.tm_min = INT_MIN;
-    tm.tm_sec = INT_MIN;
-    tm.tm_wday = 0;
-    tm.tm_yday = INT_MIN;
-    tm.tm_isdst = -1;
-    tm.tm_zone = NULL;
+	tm.tm_year = INT_MIN;
+	tm.tm_mon = INT_MIN;
+	tm.tm_mday = INT_MIN;
+	tm.tm_hour = INT_MIN;
+	tm.tm_min = INT_MIN;
+	tm.tm_sec = INT_MIN;
+	tm.tm_wday = 0;
+	tm.tm_yday = INT_MIN;
+	tm.tm_isdst = -1;
+	tm.tm_zone = NULL;
 
-    if(!pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec))
-		rb_raise(rb_eArgError, "strptime error");
+	ptr_fmt = RSTRING_PTR(format);
+	len_fmt = RSTRING_LEN(format);
 
-    /* currently no timezone support */
-    time2_fill_gaps_tm(&tm);
+	if (memchr(ptr_fmt, '\0', len_fmt)) {
+		long idx_str = 0, idx_fmt = 0;
+
+		ptr_str = RSTRING_PTR(str);
+		len_str = RSTRING_LEN(str);
+
+		do {
+			if(!pg_strptime(ptr_str+idx_str, ptr_fmt+idx_fmt, &tm, &nsec))
+				rb_raise(rb_eArgError, "strptime error");
+			while (idx_str < len_str && ptr_str[idx_str] != '\0') ++idx_str;
+			idx_str++;
+			while (idx_fmt < len_fmt && ptr_fmt[idx_fmt] != '\0') ++idx_fmt;
+			idx_fmt++;
+		} while(idx_fmt < len_fmt && idx_str < len_str);
+		/* TODO: may be have unprocessed symbols */
+	}
+	else {
+		if(!pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec))
+			rb_raise(rb_eArgError, "strptime error");
+	}
+
+	/* currently no timezone support */
+	time2_fill_gaps_tm(&tm);
 	COPY_TM_TO_ORIG(tm, tm_orig);
 
 	return rb_time_nano_new(time2_make_time_t_orig(&tm_orig, 0), nsec);
