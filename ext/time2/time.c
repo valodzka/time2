@@ -20,6 +20,7 @@
 #include <errno.h>
 
 #ifndef RUBY_TIME_18_COMPAT
+#  error wtf?
 #  include "ruby/ruby.h"
 #  include "ruby/st.h"
 #  include "ruby/encoding.h"

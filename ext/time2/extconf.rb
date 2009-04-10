@@ -36,6 +36,8 @@ check_leap_seconds()
 have_header('unistd.h')
 # Check for new hash API (MurmurHash)
 have_func('rb_hash_start', 'ruby.h')
+# Check new new functions
+have_func('rb_time_nano_new', 'intern.h')
 # Different versions compatibility
 case RUBY_VERSION
 when /^1.9/

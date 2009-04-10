@@ -7,10 +7,21 @@
 #include "pgtz.h"
 #include "tzfile.h"
 
-#include <ruby/ruby.h>
-#include <ruby/st.h>
-#include <ruby/intern.h>
-#include <ruby/encoding.h>
+#ifndef RUBY_TIME_18_COMPAT
+#  include <ruby/ruby.h>
+#  include <ruby/st.h>
+#  include <ruby/intern.h>
+#  include <ruby/encoding.h>
+#else
+#  include <ruby.h>
+#  include <st.h>
+#  include <intern.h>
+#  define rb_enc_str_asciicompat_p(x) (1)
+#endif
+
+#ifndef RB_TIME_NANO_NEW
+#  define rb_time_nano_new(x, y) (rb_time_new(x,y))
+#endif
 
 static ID id_year, id_mon,
 	id_day, id_mday, id_wday, id_yday,
@@ -272,14 +283,25 @@ time2_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz
     }
     tm->tm_hour = NIL_P(v[3])?0:obj2long(v[3]);
     tm->tm_min  = NIL_P(v[4])?0:obj2long(v[4]);
-    if (!NIL_P(v[6]) && argc == 7) {
-        tm->tm_sec  = NIL_P(v[5])?0:obj2long(v[5]);
-        *nsec = obj2long1000(v[6]);
+
+	// TODO: make it work at all ruby version
+	tm->tm_sec = NIL_P(v[5])?0:obj2long(v[5]);
+    if (!NIL_P(v[6])) {
+	  if (argc == 8) {
+		/* v[6] is timezone, but ignored */
+	  }
+	  else if (argc == 7) {
+		*nsec = obj2long1000(v[6]);;
+	  }
     }
-    else {
-		/* when argc == 8, v[6] is timezone, but ignored */
-        tm->tm_sec  = NIL_P(v[5])?0:obj2nsec(v[5], nsec);
-    }
+    /* if (!NIL_P(v[6]) && argc == 7) { */
+/*         tm->tm_sec  = NIL_P(v[5])?0:obj2long(v[5]); */
+/*         *nsec = obj2long1000(v[6]); */
+/*     } */
+/*     else { */
+/* 		/\* when argc == 8, v[6] is timezone, but ignored *\/ */
+/*         tm->tm_sec  = NIL_P(v[5])?0:obj2nsec(v[5], nsec); */
+/*     } */
 
     if (!NIL_P(v[7]))
 		GetTZ(v[7], *tz);
