@@ -51,6 +51,10 @@ struct timespec rb_time_timespec(VALUE time);
 #  define LOCALTIME(tm, result) localtime(tm)
 #endif
 
+#ifndef STRCASECMP(a,b)
+#  define STRCASECMP(a,b) (strcasecmp(a,b))
+#endif
+
 #ifdef HAVE_TM_ZONE
 #  define COPY_TM_TZ(expr) expr
 #else
@@ -526,7 +530,7 @@ time2_fill_gaps_tm(struct pg_tm *tm)
 		pg_time_t now = time(NULL);
 		struct tm* resultp;
 		IF_HAVE_GMTIME_R(struct tm result);
-		
+
 		resultp = LOCALTIME(&now, result);
 		COPY_ORIG_TO_TM(*resultp, tm_now);
 		tm->tm_year = tm_now.tm_year;
@@ -630,7 +634,7 @@ time2_strptime(VALUE klass, VALUE str, VALUE format)
 	long nsec = 0;
 	long len_str, len_fmt;
 	char *ptr_str, *ptr_fmt;
-	
+
 	StringValue(str);
 	StringValue(format);
 
