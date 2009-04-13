@@ -52,7 +52,7 @@ struct timespec rb_time_timespec(VALUE time);
 #endif
 
 #ifndef STRCASECMP(a,b)
-#  define STRCASECMP(a,b) (strcasecmp(a,b))
+#  define STRCASECMP(a,b) ((a,b))
 #endif
 
 #ifdef HAVE_TM_ZONE
@@ -162,6 +162,7 @@ obj2nsec(VALUE obj, long *nsec)
     *nsec = ts.tv_nsec;
     return (long)ts.tv_sec;
 }
+
 
 static int
 time2_arg_i(st_data_t key, st_data_t val, st_data_t store)
@@ -289,6 +290,7 @@ time2_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz
     tm->tm_min  = NIL_P(v[4])?0:obj2long(v[4]);
 
 	// TODO: make it work at all ruby version
+#ifndef HAVE_RB_TIME_TIMESPEC
 	tm->tm_sec = NIL_P(v[5])?0:obj2long(v[5]);
     if (!NIL_P(v[6])) {
 	  if (argc == 8) {
@@ -298,14 +300,16 @@ time2_arg(int argc, VALUE *argv, struct pg_tm *tm, long *nsec, struct pg_tz** tz
 		*nsec = obj2long1000(v[6]);;
 	  }
     }
-    /* if (!NIL_P(v[6]) && argc == 7) { */
-/*         tm->tm_sec  = NIL_P(v[5])?0:obj2long(v[5]); */
-/*         *nsec = obj2long1000(v[6]); */
-/*     } */
-/*     else { */
-/* 		/\* when argc == 8, v[6] is timezone, but ignored *\/ */
-/*         tm->tm_sec  = NIL_P(v[5])?0:obj2nsec(v[5], nsec); */
-/*     } */
+#else
+    if (!NIL_P(v[6]) && argc == 7) {
+	    tm->tm_sec  = NIL_P(v[5])?0:obj2long(v[5]);
+        *nsec = obj2long1000(v[6]);
+    }
+    else {
+		/* when argc == 8, v[6] is timezone, but ignored */
+	    tm->tm_sec  = NIL_P(v[5])?0:obj2nsec(v[5], nsec);
+    }
+#endif
 
     if (!NIL_P(v[7]))
 		GetTZ(v[7], *tz);
@@ -711,10 +715,10 @@ Init_time2(void)
 	}
 
 
-//    rb_require("time"); /* defines strptime which we wil redefine later */
-//#ifndef RUBY_TIME_18_COMPAT
-//    rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
-//#endif
+    rb_require("time"); /* defines strptime which we wil redefine later */
+#ifndef RUBY_TIME_18_COMPAT
+    rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
+#endif
 
     rb_define_singleton_method(rb_cTime, "utc", time2_s_mkutc, -1);
     rb_define_singleton_method(rb_cTime, "gm", time2_s_mkutc, -1);

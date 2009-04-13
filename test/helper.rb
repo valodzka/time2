@@ -16,14 +16,6 @@ ensure
   ENV['TZ'] = before
 end
 
-unless Time.respond_to? :nsec
-  Time.class_eval do
-    def nsec
-      self.usec*1000
-    end
-  end
-end
-
 # API missing in ruby 1.8.6
 def Dir.mktmpdir(prefix_suffix=nil, tmpdir=nil)
   case prefix_suffix
