@@ -11,38 +11,29 @@ class TestLocalUTC < Test::Unit::TestCase
   end
 
   def test_local
-    with_tz("Europe/Prague") do
-      t = Time.local(0, 0, 9, 1, 1, 2008, nil, nil, nil, "Japan")
-      assert !t.utc?
-      assert_equal 1, t.hour
-      assert_equal 1, t.mday
-      assert_equal 1, t.month
-      assert_equal 2008, t.year
-      assert_equal "CET", t.zone
-    end
+    now = Time.local(2008)
+    return if now.dst? # canno't happens
+    offset = now.gmtoff
+    t = Time.local(0, 0, 23, 1, 1, 2008, nil, nil, nil, "Japan")
+    assert !t.utc?
+    assert_equal 23-9+offset/3600, t.hour
+    assert_equal 1, t.mday
+    assert_equal 1, t.month
+    assert_equal 2008, t.year
+    assert_equal now.zone, t.zone
   end
 
   def test_leapsecond
-    with_tz("right/UTC") do
-      t = Time.local(2005, 12, 31, 23, 59, 59)
-      leap = Time.at(t.to_i + 1)
-      assert_equal 60, leap.sec
-      assert_equal 59, leap.min
-      assert_equal 2005, leap.year
-    end
+    leap = Time.local(59, 59, 23, 31, 12, 2005, nil, nil, nil, "right/UTC")
+    normal = Time.local(59, 59, 23, 31, 12, 2005, nil, nil, nil, "UTC")
+    assert_equal 22, leap.to_i - normal.to_i
   end
 
   def test_hash_args
-    with_tz("America/New_York") do
-      t1 = Time.local :year => 2009, :mon => 11, :day => 1, :hour => 1,  :min => 30, :dst => false
-      t2 = Time.local :year => 2009, :mon => 11, :day => 1, :hour => 1,  :min => 30, :dst => true
-      assert_equal t1.dst?, false
-      assert_equal t2.dst?, true
-      assert_equal t1.day, t2.day
-      assert_equal t1.hour, t2.hour
-      assert_equal t1.min, t2.min
-      assert_equal t1.sec, t2.sec
-    end
+    t1 = Time.local(:year => 2009, :mon => 11, :day => 1, :hour => 1,  :min => 30, :dst => false, :tz => "America/New_York").utc
+    t2 = Time.local(:year => 2009, :mon => 11, :day => 1, :hour => 1,  :min => 30, :dst => true, :tz => "America/New_York").utc
+    assert_equal 3600,  t1.to_i - t2.to_i
+
     t = Time.utc(:year => 2009, :yday => 100)
     # TODO: implement this
     #assert_equal t.mon, 4

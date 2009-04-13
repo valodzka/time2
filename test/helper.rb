@@ -8,6 +8,7 @@ def ruby19
 end
 
 def with_tz(tz)
+  raise "error"
   before = ENV['TZ']
   ENV['TZ'] = tz
   yield
