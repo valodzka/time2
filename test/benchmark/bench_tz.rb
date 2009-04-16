@@ -14,19 +14,23 @@ begin
   require 'tzinfo'
 
   n = 500000
-  t = Time.now.utc
-  tz1 = TZInfo::Timezone.get('US/Pacific')
-  tz2 = 'US/Pacific'
+  tz = ENV['TZ'] || 'Europe/Minsk'
+  t = [1, 1, 1, 1, 1, 2008, 1, 1, nil]
+  t1 = t + [nil]
+  t2 = t + [tz]
+  tzinfo = TZInfo::Timezone.get(tz)
+
 
   Benchmark.benchmark("US/Pacific->UTC" + Benchmark::CAPTION, WIDTH, Benchmark::FMTSTR){|r|
     r.report("TZInfo"){
       n.times{
-        nt1 = tz1.local_to_utc(t)
+        lt1 = Time.local(*t1)
+        nt1 = tzinfo.local_to_utc(lt1)
       }
     }
-    r.report("TimeZone"){
+    r.report("Time.utc"){
       n.times{
-        nt2 = Time.utc(t.sec, t.min, t.hour, t.day, t.mon, t.year, t.wday, t.yday, t.dst?, tz2)
+        nt2 = Time.utc(*t2)
       }
     }
   }

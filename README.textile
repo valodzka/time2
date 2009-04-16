@@ -1,163 +1,25 @@
-h2. New Ruby Time implementation
+h2. Small step forward
 
-h3. The radical solution to ruby Time class problems
+h3. Minimalistic time zone support for Ruby time class
 
 Ruby Time class is the one of the most disappointment parts of the ruby standard library.
 * It "can't handle time zones":http://michaelbuffington.com/2006/10/11/i-heap-scorn-upon-rubys-time-class/ by design (although some methods accept time zone as a parameter) and this can't be changed by "third party libraries":http://tzinfo.rubyforge.org (except via creating a new class (as "Rails does":http://api.rubyonrails.org/classes/ActiveSupport/TimeWithZone.html)).
 * It has pure ruby implementation of time parsing method, which is "awfully slow":http://scie.nti.st/2007/11/28/ruby-vs-python-date-parsing-am-i-doing-somethin-wrong.
-* It has a couple of "non-portable features":http://www.ruby-doc.org/core/classes/Time.src/M000250.html, because heavy depend from underlying system libraries. On Windows, for example, you can't create time before UNIX epoch (i.e. 1970).
 
-Project tries to radically solve this problems. It adds platform independent (and therefore portable) time functions, inсluding full time zone support (full "tz database":http://www.twinsun.com/tz/tz-link.htm, transition between time zones, dst, leap seconds) and fast implementation of the <code>strptime</code> method. Functions which return current system time it is the only functions from which the library depends.
-
-Library will be distributed as a gem when become production ready, but I hope this code will be included in ruby core.
+The initial idea of this project was to reimplement ruby Time class with first class time zones support. But, after a couple of discussion, I realized that, dispite there are some cases when it usefull, storing timezone with time generaly brings more drawbacks than advantages. So currently library just fixes couple of ruby <code>Time</code> methods by adding fast cross platform implementation (<code>Time.local</code>, <code>Time.utc</code>, <code>Time.strptime</code>, generaly 10-100 times faster then alternatives).
 
 h4. FAQ
 
-h5. Why not to extend Time to hold arbitrary time offset from UTC? It's simpler and easier to maintain!
-
-If we take two different places with same UTC offset, this doesn't mean that they will have same offset in other day, for example:
-
-|_.America/New_York |_. America/Manaus |
-|<pre>
->> t = Time.local(2009, 11, 1, 1, 30, 0)
-=> 2009-11-01 01:30:00 -0400
->> t + 3600*24*30
-=> 2009-12-01 00:30:00 -0500 
-</pre>|<pre>
-t = Time.local(2009, 11, 1, 1, 30, 0)
-=> 2009-11-01 01:30:00 -0400
->> t + 3600*24*30
-=> 2009-12-01 01:30:00 -0400
-</pre>|
-
-We should now exact place, not just offset, to perform correct calculation. Also many other methods, like a <code>Time#zone</code> or <code>Time#strftime</code> with %Z flag, won't work correctly without exact timezone information. 
-
 h5. How can I use system "tz database":http://www.twinsun.com/tz/tz-link.htm ?
 
-At the moment library uses global variable <code>$__tz_directory</code> as a tz database location directory. It's configured automaticaly to use bundled tz database in time of library loading. 
+At the moment library uses global variable <code>$__tz_directory</code> as a tz database location directory. It's configured automaticaly to use bundled tz database in time of library loading.
 
 Many OS (but "not all":http://microsoft.com) contain own tz database, so if you want to use system (or any other) tz database, you should set <code>$__tz_directory</code> before <code>require 'time2'</code> statement.
 
-h5. How to change default time zone?
-
-Enviroment variable <code>TZ</code> is checked first in process of default time zone search. So, just set it.
-
-h3. Example
-
-Short <code>irb</code> session:
-
-<pre>
-
-$ruby -rtime2 -S irb
-# Local timezone settings
->> TimeZone.local
-=> #<TimeZone: Europe/Athens>
->> Time.now
-=> 2009-03-20 19:54:34 +0200
->> TimeZone.local "Japan"
-=> #<TimeZone: Europe/Athens>
->> Time.now
-=> 2009-03-21 02:54:54 +0900
->> Time.now.zone
-=> "JST"
-
-# Convert from one zone to another
->> t = Time.now
-=> 2009-03-21 02:55:37 +0900
->> tz = TimeZone['US/Pacific']
-=> #<TimeZone: US/Pacific>
->> t.localtime(tz)
-=> 2009-03-20 10:55:37 -0700
->> t.dst?
-=> true
->> t.zone
-=> "PDT"
->> tz.name
-=> "US/Pacific"
-
-# Leap second (most OS doesn't have leap second support, so by default we use zones without leap second)
->> TimeZone.local  "right/UTC"
-=> #<TimeZone: Japan>
->> t = Time.local(2005, 12, 31, 23, 59, 59)
-=> 2005-12-31 23:59:59 UTC
->> t = Time.at(t.to_i + 1)
-=> 2005-12-31 23:59:60 UTC
->> t = Time.at(t.to_i + 1)
-=> 2006-01-01 00:00:00 UTC
-
-</pre>
-
-h3. Benchmarks
-
-Platform: ruby 1.9.2dev (2009-03-12 trunk 22918) [i686-linux]
-
-h4. Time zones conversion
-
-About 12-21 times faster than TZInfo on ruby1.9 and 40-60 times faster on ruby1.8, but could be even faster if you use <code>local</code> instead of <code>getlocal</code> which creates a new object every time
-<pre>
-
-n = 100000
-tz1 = TZInfo::Timezone.get('US/Pacific')
-tz2 = TimeZone['US/Pacific']
-
-Benchmark.bm{|r|
-  r.report{
-    n.times{ tz1.utc_to_local(t) }
- }
- r.report{
-    n.times{ t.getlocal(tz2) }
- }
-}
-
-#      user     system      total        real
-#  4.510000   0.000000   4.510000 (  4.631645)
-#  0.340000   0.010000   0.350000 (  0.362180)
-
-</pre>
-
-h4. strptime
-
-About 10-50 times faster than <code>strptime</code> from the standard library on ruby1.9 and 150-40 times faster on ruby1.8.
-
-<pre>
-
-fmt = "%Y-%m-%d %Z"
-str = "2007-10-10 GMT"
-
-m1 = Time.method(:old_strptime)
-m2 = Time.method(:strptime)
-
-n = 10000
-Benchmark.bm{|b|
-  b.report{
-    n.times{ m1.call(str, fmt) }
-  }
-  b.report{
-    n.times{ m2.call(str, fmt) }
-  }
-}
-
-#      user     system      total        real
-#  7.420000   0.070000   7.490000 (  7.688315)
-#  0.150000   0.000000   0.150000 (  0.140982)
-
-</pre>
 
 h3. Portability
 
-Code tested on Debian Lenny with GCC 4.3.3 and Windows with VC 9
-
-h3. Drawbacks
-
-* Library initialisation requires expensive directory scan and takes about two tenth of second. If this is appreciably for you, this can be avoided by setting <code>TZ</code> enviroment variable
-* Some platforms have more efficient time manipulation functions than library uses. For example, on Windows has limited but fast mktime implementation, so creation of new <code>Time</code> object with <code>time2</code> is slower (about a 0.000004 seconds per object)
-* Windows has less exact time zones system than tz database, so default timezone determined by library may be not match current place exactly. For example, Windows has one time zone for Kiev, Istambul and Athens, but tz database has three timezones: Europe/Kiev, Europe/Istambul and Europe/Athens, so windows timezone will be mapped on first suitable database time zone, in this example - Europe/Athens. This behavior can be changed by setting <code>TZ</code> enviroment database.
-
-h3. TODO & open question
-
-* <code>strptime</code> implementation doesn't support some special flags (%W, %u, how should %N work? whether %Q be implemented?)
-* code isn't clean enough, many old code should be removed
-* ugly english :)
+Code tested on Debian Lenny with GCC 4.3.3, Mac OS X with GCC 4.0.1 and Windows with VC 9
 
 h3. Acknowledgements
 
