@@ -16,17 +16,17 @@ begin
   n = 500000
   t = Time.now.utc
   tz1 = TZInfo::Timezone.get('US/Pacific')
-  tz2 = TimeZone['US/Pacific']
+  tz2 = 'US/Pacific'
 
-  Benchmark.benchmark("UTC->US/Pacific" + Benchmark::CAPTION, WIDTH, Benchmark::FMTSTR){|r|
+  Benchmark.benchmark("US/Pacific->UTC" + Benchmark::CAPTION, WIDTH, Benchmark::FMTSTR){|r|
     r.report("TZInfo"){
       n.times{
-        tz1.utc_to_local(t)
+        nt1 = tz1.local_to_utc(t)
       }
     }
     r.report("TimeZone"){
       n.times{
-        t.getlocal(tz2)
+        nt2 = Time.utc(t.sec, t.min, t.hour, t.day, t.mon, t.year, t.wday, t.yday, t.dst?, tz2)
       }
     }
   }
