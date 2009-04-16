@@ -105,7 +105,7 @@ static const struct pg_time_locale {
 
 
 static const char *
-_pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, long *nsec)
+_pg_strptime(const char *buf, const char *fmt, struct pg_tm *tm, long *nsec, char ** tz, int *tzlen)
 {
 	char	c;
 	const char *ptr;
@@ -142,7 +142,7 @@ label:
 			break;
 
 		case '+':
-		  buf = _pg_strptime(buf, loc->date_fmt, tm, nsec);
+			buf = _pg_strptime(buf, loc->date_fmt, tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
@@ -165,13 +165,13 @@ label:
 			break;
 
 		case 'c': /* Date and time, using the locale's format. */
- 		    buf = _pg_strptime(buf, loc->c_fmt, tm, nsec);
+ 		    buf = _pg_strptime(buf, loc->c_fmt, tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'D':
-			buf = _pg_strptime(buf, "%m/%d/%y", tm, nsec);
+			buf = _pg_strptime(buf, "%m/%d/%y", tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
@@ -189,38 +189,38 @@ label:
 			goto label;
 
 		case 'F':
-			buf = _pg_strptime(buf, "%Y-%m-%d", tm, nsec);
+			buf = _pg_strptime(buf, "%Y-%m-%d", tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'R':
-			buf = _pg_strptime(buf, "%H:%M", tm, nsec);
+			buf = _pg_strptime(buf, "%H:%M", tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'r': /* 12-hour clock time using the AM/PM notation;
 					 in the default locale, this shall be equivalent to %I:%M:%S %p */
-  		    buf = _pg_strptime(buf, loc->ampm_fmt, tm, nsec);
+  		    buf = _pg_strptime(buf, loc->ampm_fmt, tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'T':
-			buf = _pg_strptime(buf, "%H:%M:%S", tm, nsec);
+			buf = _pg_strptime(buf, "%H:%M:%S", tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'X': /* The time, using the locale's format */
-			buf = _pg_strptime(buf, loc->X_fmt, tm, nsec);
+			buf = _pg_strptime(buf, loc->X_fmt, tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
 
 		case 'x': /* The date, using the locale's date format */
-			buf = _pg_strptime(buf, loc->x_fmt, tm, nsec);
+			buf = _pg_strptime(buf, loc->x_fmt, tm, nsec, tz, tzlen);
 			if (buf == 0)
 				return 0;
 			break;
@@ -555,24 +555,11 @@ label:
 
 			for (cp = buf; *cp && isupper((unsigned char)*cp); ++cp) {/*empty*/}
 			if (cp - buf) {
-				strncpy(zonestr, buf, TZ_STRLEN_MAX);
-				zonestr[TZ_STRLEN_MAX] = '\0';
-				/* TODO: normal implementation */
-				if (0 == strcmp(zonestr, "GMT") ||
-					0 == strcmp(zonestr, "Z") ||
-					0 == strcmp(zonestr, "UTC")) {
-					tm->tm_zone = "GMT";
-				}
-				else {
-				  rb_notimplement();
-				}
-				/*
-				} else if (0 == strcmp(zonestr, tzname[0])) {
-				    tm->tm_isdst = 0;
-				} else if (0 == strcmp(zonestr, tzname[1])) {
-				  tm->tm_isdst = 1; */
+				*tz = buf; //TODO: use tm->tm_zone ?
+				*tzlen = cp - buf;
 				buf += cp - buf;
 			}
+			// TODO: error if timezone empty?
 			}
 			break;
 		}
@@ -597,7 +584,9 @@ const char *
 pg_strptime(const char * buf,
 			const char * fmt,
 			struct pg_tm * tm,
-			long *nsec)
+			long *nsec,
+			char **tz,
+			int  *tzlen)
 {
-	return  _pg_strptime(buf, fmt, tm, nsec);
+	return  _pg_strptime(buf, fmt, tm, nsec, tz, tzlen);
 }

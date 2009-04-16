@@ -637,6 +637,8 @@ time2_strptime(VALUE klass, VALUE str, VALUE format)
 	long nsec = 0;
 	long len_str, len_fmt;
 	char *ptr_str, *ptr_fmt;
+	char *tzptr = NULL;
+	int tzlen = 0, utcp = 0;
 
 	StringValue(str);
 	StringValue(format);
@@ -666,7 +668,7 @@ time2_strptime(VALUE klass, VALUE str, VALUE format)
 		len_str = RSTRING_LEN(str);
 
 		do {
-			if(!pg_strptime(ptr_str+idx_str, ptr_fmt+idx_fmt, &tm, &nsec))
+			if(!pg_strptime(ptr_str+idx_str, ptr_fmt+idx_fmt, &tm, &nsec, &tzptr, &tzlen))
 				rb_raise(rb_eArgError, "strptime error");
 			while (idx_str < len_str && ptr_str[idx_str] != '\0') ++idx_str;
 			idx_str++;
@@ -676,15 +678,20 @@ time2_strptime(VALUE klass, VALUE str, VALUE format)
 		/* TODO: may have unprocessed symbols */
 	}
 	else {
-		if(!pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec))
+		if(!pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec, &tzptr, &tzlen))
 			rb_raise(rb_eArgError, "strptime error");
 	}
 
-	/* currently no timezone support */
+	/* currently only very basic time zone support */
+	if (tzlen > 0 && ( strncmp("Z", tzptr, tzlen) == 0 ||
+					   strncmp("UTC", tzptr, tzlen) == 0 ||
+					   strncmp("GMT", tzptr, tzlen) == 0)) {
+		utcp = 1;
+	}
 	time2_fill_gaps_tm(&tm);
 	COPY_TM_TO_ORIG(tm, tm_orig);
 
-	return rb_time_nano_new(time2_make_time_t_orig(&tm_orig, 0), nsec);
+	return rb_time_nano_new(time2_make_time_t_orig(&tm_orig, utcp), nsec);
 }
 
 void

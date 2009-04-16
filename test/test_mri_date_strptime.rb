@@ -297,9 +297,8 @@ class TestDateStrptime < Test::Unit::TestCase
 #     assert_equal(d, DateTime.strptime(d.to_s))
 #    assert_equal(DateTime.new(2002,3,14,11,22,33, 0),
 #		 DateTime.strptime('2002-03-14T11:22:33Z'))
-    # TODO: enable timezones
-    #assert_equal(Time.utc(2002,3,14,11,22,33),
-    #             Time.strptime('2002-03-14T11:22:33Z', '%Y-%m-%dT%H:%M:%S%Z').utc)
+    assert_equal(Time.utc(2002,3,14,11,22,33),
+                 Time.strptime('2002-03-14T11:22:33Z', '%Y-%m-%dT%H:%M:%S%Z').utc)
 #     assert_equal(Time.utc(2002,3,14,11,22,33, 9.to_r/24),
 #                  Time.strptime('2002-03-14T11:22:33+09:00', '%Y-%m-%dT%H:%M:%S%Z'))
 #     assert_equal(DateTime.new(2002,3,14,11,22,33, -9.to_r/24),
@@ -309,7 +308,7 @@ class TestDateStrptime < Test::Unit::TestCase
   end
 
   def test_strptime__2
-    # TODO: uncomment
+    # TTODDO: uncomment
 #     n = 10**9
 #     with_tz("Japan") do  # not have dst :)
 #       d = Time.local(2006,6,1)

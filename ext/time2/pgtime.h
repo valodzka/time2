@@ -58,7 +58,9 @@ extern const char *
 pg_strptime(const char * buf,
 			const char * fmt,
 			struct pg_tm * tm,
-			long *nsec);
+			long *nsec,
+			char **tz,
+			int *tzlen);
 
 extern pg_tz *pg_tzset(const char *tzname);
 extern bool tz_acceptable(pg_tz *tz);
