@@ -19,8 +19,8 @@
 #  define rb_enc_str_asciicompat_p(x) (1)
 #endif
 
-#ifndef RB_TIME_NANO_NEW
-#  define rb_time_nano_new(x, y) (rb_time_new(x,y))
+#ifndef HAVE_RB_TIME_NANO_NEW
+#  define rb_time_nano_new(x, y) (rb_time_new((x),(y)/1000))
 #endif
 
 static ID id_year, id_mon,
@@ -52,7 +52,7 @@ struct timespec rb_time_timespec(VALUE time);
 #endif
 
 #ifndef STRCASECMP(a,b)
-#  define STRCASECMP(a,b) ((a,b))
+#  define STRCASECMP(a,b) (strcasecmp(a,b))
 #endif
 
 #ifdef HAVE_TM_ZONE
@@ -100,8 +100,8 @@ timezone_cached_get(const char *tzname)
 {
     st_data_t key = (st_data_t)tzname, value = 0;
 
-	//if (fast_cache_tz && strcmp(tzname, fast_cache_tz->TZname) == 0)
-	//	return fast_cache_tz;
+	if (fast_cache_tz && strcmp(tzname, fast_cache_tz->TZname) == 0)
+		return fast_cache_tz;
 
     if(!tz_cache)
         tz_cache = st_init_strtable();
@@ -634,7 +634,6 @@ time2_strptime(VALUE klass, VALUE str, VALUE format)
 {
 	struct pg_tm tm;
 	struct tm tm_orig;
-	VALUE time_obj;
 	long nsec = 0;
 	long len_str, len_fmt;
 	char *ptr_str, *ptr_fmt;
@@ -674,7 +673,7 @@ time2_strptime(VALUE klass, VALUE str, VALUE format)
 			while (idx_fmt < len_fmt && ptr_fmt[idx_fmt] != '\0') ++idx_fmt;
 			idx_fmt++;
 		} while(idx_fmt < len_fmt && idx_str < len_str);
-		/* TODO: may be have unprocessed symbols */
+		/* TODO: may have unprocessed symbols */
 	}
 	else {
 		if(!pg_strptime(StringValueCStr(str), StringValueCStr(format), &tm, &nsec))

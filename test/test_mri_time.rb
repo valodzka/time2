@@ -147,8 +147,10 @@ class TestTime < Test::Unit::TestCase
   end
 
   def test_utc_subsecond
-    assert_equal(100000, Time.utc(2007,1,1,0,0,1.1).usec)
-    assert_equal(100000, Time.utc(2007,1,1,0,0,Rational(11,10)).usec)
+    ruby19 do
+      assert_equal(100000, Time.utc(2007,1,1,0,0,1.1).usec)
+      assert_equal(100000, Time.utc(2007,1,1,0,0,Rational(11,10)).usec)
+    end
   end
 
   def test_eq_nsec

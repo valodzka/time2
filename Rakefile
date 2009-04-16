@@ -5,7 +5,7 @@ require 'rake/testtask'
 
 TBIN = "*.{bundle,o,obj,pdb,lib,def,exp}"
 CLEAN.include ["ext/time2/#{TBIN}", "lib/**/#{TBIN}", 'ext/time2/Makefile', 'ext/time2/ZMakefile',
-               'ext/time2/tz_countries.h', '**/.*.sw?', '*.gem', '.config', 'pkg', 'html']
+               '**/.*.sw?', '*.gem', '.config', 'pkg', 'html']
 BIN = "*.{so}"
 CLOBBER.include ["ext/time2/#{TBIN}", "lib/**/#{TBIN}", 'zoneinfo']
 
