@@ -6,8 +6,8 @@ Gem::Specification.new do |s|
   s.version = "0.0.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
-    s.authors = ["Pavel Valodzka"]
-  s.date = %q{2009-03-31}
+  s.authors = ["Pavel Valodzka"]
+  s.date = %q{2009-03-08}
   s.description = %q{Extensions of ruby Time class}
   s.email = %q{pavel@valodzka.name}
   #s.extra_rdoc_files = ["README.md", "LICENSE"]
@@ -22,7 +22,6 @@ ext/time2/getopt.c	ext/time2/pgtz.c	ext/time2/scheck.c	ext/time2/tzfile.h}
   s.rdoc_options = ["--inline-source", "--charset=UTF-8"]
   s.require_paths = ["lib"]
   #s.rubyforge_project = %q{}
-  s.rubygems_version = %q{1.3.0}
   s.summary = s.description
 
   if s.respond_to? :specification_version then
