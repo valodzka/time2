@@ -124,7 +124,7 @@ leap_year_p(long y)
 {
 	return ((y % 4 == 0) && (y % 100 != 0)) || (y % 400 == 0);
 }
- 
+
 #define NDIV(x,y) (-(-((x)+1)/(y))-1)
 #define NMOD(x,y) ((y)-(-((x)+1)%(y))-1)
 #define DIV(n,d) ((n)<0 ? NDIV((n),(d)) : (n)/(d))
@@ -162,14 +162,14 @@ timegm_noleapsecond(struct tm *tm)
 		-1 + 31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30
 		/* 1    2    3    4    5    6    7    8    9    10   11 */
 	};
- 
+
 	long tm_year = tm->tm_year;
 	int tm_yday = tm->tm_mday;
 	if (leap_year_p(tm_year + 1900))
 		tm_yday += leap_year_yday_offset[tm->tm_mon];
 	else
 		tm_yday += common_year_yday_offset[tm->tm_mon];
- 
+
 	/*
 	 *  `Seconds Since the Epoch' in SUSv3:
 	 *  tm_sec + tm_min*60 + tm_hour*3600 + tm_yday*86400 +
@@ -202,7 +202,7 @@ tmcmp(struct tm *a, struct tm *b)
 	else
 		return 0;
 }
- 
+
 #if SIZEOF_TIME_T == SIZEOF_LONG
 typedef unsigned long unsigned_time_t;
 #elif SIZEOF_TIME_T == SIZEOF_INT
@@ -222,9 +222,9 @@ search_time_t(struct tm *tptr, int utc_p)
 	int find_dst;
 	IF_HAVE_GMTIME_R(struct tm result);
 #define GUESS(p) (utc_p ? GMTIME(p, result) : LOCALTIME(p, result))
- 
+
 	find_dst = 0 < tptr->tm_isdst;
- 
+
 #ifdef NEGATIVE_TIME_T
 	guess_lo = (time_t)~((unsigned_time_t)~(time_t)0 >> 1);
 #else
@@ -233,7 +233,7 @@ search_time_t(struct tm *tptr, int utc_p)
 	guess_hi = ((time_t)-1) < ((time_t)0) ?
 		(time_t)((unsigned_time_t)~(time_t)0 >> 1) :
 		~(time_t)0;
- 
+
 	guess = timegm_noleapsecond(tptr);
 	tm = GUESS(&guess);
 	if (tm) {
@@ -256,23 +256,23 @@ search_time_t(struct tm *tptr, int utc_p)
 				guess_lo = guess;
 		}
 	}
- 
+
 	tm = GUESS(&guess_lo);
 	if (!tm) goto error;
 	d = tmcmp(tptr, tm);
 	if (d < 0) goto out_of_range;
 	if (d == 0) return guess_lo;
 	tm_lo = *tm;
- 
+
 	tm = GUESS(&guess_hi);
 	if (!tm) goto error;
 	d = tmcmp(tptr, tm);
 	if (d > 0) goto out_of_range;
 	if (d == 0) return guess_hi;
 	tm_hi = *tm;
- 
+
 	have_guess = 0;
- 
+
 	while (guess_lo + 1 < guess_hi) {
 		/* there is a gap between guess_lo and guess_hi. */
 		unsigned long range = 0;
@@ -281,21 +281,21 @@ search_time_t(struct tm *tptr, int utc_p)
 			/*
 			  Try precious guess by a linear interpolation at first.
 			  `a' and `b' is a coefficient of guess_lo and guess_hi as:
- 
+
 			  guess = (guess_lo * a + guess_hi * b) / (a + b)
- 
+
 			  However this causes overflow in most cases, following assignment
 			  is used instead:
- 
+
 			  guess = guess_lo / d * a + (guess_lo % d) * a / d
 			  + guess_hi / d * b + (guess_hi % d) * b / d
 			  where d = a + b
- 
+
 			  To avoid overflow in this assignment, `d' is restricted to less than
 			  sqrt(2**31).  By this restriction and other reasons, the guess is
 			  not accurate and some error is expected.  `range' approximates
 			  the maximum error.
- 
+
 			  When these parameters are not suitable, i.e. guess is not within
 			  guess_lo and guess_hi, simple guess by binary search is used.
 			*/
@@ -350,7 +350,7 @@ search_time_t(struct tm *tptr, int utc_p)
 				+ guess_hi / d * b + (guess_hi % d) * b / d;
 			have_guess = 1;
 		}
- 
+
 		if (guess <= guess_lo || guess_hi <= guess) {
 			/* Precious guess is invalid. try binary search. */
 			guess = guess_lo / 2 + guess_hi / 2;
@@ -360,11 +360,11 @@ search_time_t(struct tm *tptr, int utc_p)
 				guess = guess_hi - 1;
 			range = 0;
 		}
- 
+
 		tm = GUESS(&guess);
 		if (!tm) goto error;
 		have_guess = 0;
- 
+
 		d = tmcmp(tptr, tm);
 		if (d < 0) {
 			guess_hi = guess;
@@ -459,10 +459,10 @@ search_time_t(struct tm *tptr, int utc_p)
 			(tptr->tm_min - tm_hi.tm_min) * 60 +
 			(tptr->tm_sec - tm_hi.tm_sec);
 	}
- 
+
 out_of_range:
 	rb_raise(rb_eArgError, "time out of range");
- 
+
 error:
 	rb_raise(rb_eArgError, "gmtime/localtime error");
 	return 0;      /* not reached */
@@ -872,6 +872,7 @@ time2_s_mktime(int argc, VALUE *argv, VALUE klass)
     return time2_utc_or_local(argc, argv, Qfalse, klass);
 }
 
+
 static void
 time2_fill_gaps_tm(struct pg_tm *tm)
 {
@@ -1061,23 +1062,24 @@ Init_time2(void)
     id_utc = rb_intern("utc");
     id_mul = rb_intern("*");
 
-	{
+    /*{
 		VALUE tz_dir;
 		rb_require("tzdata"); /* should define $__tz_directory */
-		tz_dir = rb_gv_get("$__tz_directory");
+    /*	tz_dir = rb_gv_get("$__tz_directory");
 		rb_tzdir = StringValueCStr(tz_dir);
-	}
+	}*/
 
 
     rb_require("time"); /* defines strptime which we wil redefine later */
 #ifndef RUBY_TIME_18_COMPAT
-    rb_define_alias(rb_singleton_class(rb_cTime), "old_strptime", "strptime");
+    rb_define_alias(rb_singleton_class(rb_cTime), "ruby_strptime", "strptime");
 #endif
 
-    rb_define_singleton_method(rb_cTime, "utc", time2_s_mkutc, -1);
+    /*rb_define_singleton_method(rb_cTime, "utc", time2_s_mkutc, -1);
     rb_define_singleton_method(rb_cTime, "gm", time2_s_mkutc, -1);
     rb_define_singleton_method(rb_cTime, "local", time2_s_mktime, -1);
     rb_define_singleton_method(rb_cTime, "mktime", time2_s_mktime, -1);
+    */
     rb_define_singleton_method(rb_cTime, "strptime", time2_strptime, 2);
 }
 
